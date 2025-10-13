@@ -265,7 +265,7 @@ Actual regression test outcomes are documented in per-phase debug reports.
 
 | Phase | Status | Core Features Introduced | Regression Scope | Dependencies |
 |-------|--------|--------------------------|------------------|--------------|
-| **01: Environment** | ✅ Complete | Supabase, database schema, config | None (baseline) | None |
+| **01: Environment** | ✅ Complete | Firebase environment, config, clients | None (baseline) | None |
 | **02: Authentication** | ✅ Complete | Magic link, onboarding, user profiles | Phase 01: DB accessible | Phase 01 |
 | **03: Channels** | ✅ Complete | List, create, switch channels | Phase 01: DB, Phase 02: Auth | Phase 01, 02 |
 | **04: Messaging** | ✅ Complete | Real-time messaging, CRUD, optimistic UI | Phase 01: DB, Phase 02: Auth, Phase 03: Channels | Phase 01, 02, 03 |
@@ -295,16 +295,13 @@ Actual regression test outcomes are documented in per-phase debug reports.
 #### Introduced Features
 
 **Infrastructure:**
-- ✅ Supabase project created and configured
-- ✅ Database schema deployed (users, channels, messages, channel_members, user_presence)
-- ✅ RLS policies enabled on all tables
+- ✅ Firebase project configured (Auth, Firestore, RTDB)
 - ✅ Indexes created for performance (messages, channels)
 - ✅ #general channel pre-seeded
 
 **Configuration:**
 - ✅ Environment variables (.env.local)
-- ✅ Supabase clients (browser, server)
-- ✅ TypeScript types generated from database
+- ✅ Firebase clients (Auth, Firestore, RTDB)
 - ✅ Next.js 15 project initialized
 
 **Files Created:**
@@ -331,11 +328,10 @@ All subsequent phases depend on Phase 01 remaining stable.
 
 #### Critical Validation Points
 
-**Database Accessibility:**
-- [ ] Can connect to Supabase from browser client
-- [ ] Can connect to Supabase from server client
-- [ ] All 5 tables exist and queryable
-- [ ] RLS policies active and enforcing
+**Firebase Accessibility:**
+- [ ] Auth initializes without runtime errors
+- [ ] Firestore reads/writes from client succeed (emulator or live)
+- [ ] RTDB presence path reachable (emulator or live)
 
 **Schema Integrity:**
 - [ ] users table has correct columns
@@ -362,7 +358,7 @@ All subsequent phases depend on Phase 01 remaining stable.
 #### Introduced Features
 
 **Authentication System:**
-- ✅ Magic link email authentication (Supabase Auth)
+- ✅ Magic link email authentication (Firebase Auth)
 - ✅ Email input and validation
 - ✅ Magic link callback handler
 - ✅ Session management and persistence
@@ -393,8 +389,7 @@ All subsequent phases depend on Phase 01 remaining stable.
 #### Regression Scope
 
 **Phase 01 (Environment):**
-- [ ] Database connection still works
-- [ ] Supabase clients functional
+- [ ] Firebase clients functional
 - [ ] Environment variables loading
 - [ ] TypeScript compilation clean
 
@@ -407,13 +402,11 @@ All subsequent phases depend on Phase 01 remaining stable.
 #### Dependencies
 
 **Phase 01:**
-- Supabase Auth configured
-- users table exists
-- Database clients available
+- Firebase Auth configured
+- Firebase clients available
 
 **External:**
-- Email delivery service (for magic links)
-- Supabase Auth service
+- Email delivery service (for magic links via Firebase Auth)
 
 #### Critical Validation Points
 
@@ -437,11 +430,9 @@ All subsequent phases depend on Phase 01 remaining stable.
 - [ ] Logout button visible and functional
 - [ ] Logout clears session and redirects to /
 
-**Database Integrity:**
-- [ ] User record created in users table
-- [ ] User ID matches auth.users (Supabase Auth)
-- [ ] Display name persisted correctly
-- [ ] Timestamps (created_at) populated
+**Auth/Profile Integrity:**
+- [ ] User record present in Firebase Auth
+- [ ] Display name derivation (fallback) works
 
 **Console & Errors:**
 - [ ] No console errors during auth flow

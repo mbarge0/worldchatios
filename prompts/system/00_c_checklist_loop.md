@@ -27,9 +27,11 @@ Please:
    - Dependencies (prerequisite modules or setup)
    - Acceptance criteria (definition of done)
    - Testing expectations (unit, integration, E2E)
-6. Group and order tasks logically — by **Day/Phase**, **Module**, or **Milestone**.  
-7. Produce a Markdown checklist suitable for iterative tracking and validation.
-8. Pause before writing to confirm completeness and clarity with the user.
+6. Tag each task by phase: `[Plan]`, `[Build]`, `[Debug]`, `[Validate]`.  
+   - Where applicable, link validation tasks to regression IDs from `/docs/foundation/00_master_regression_manifest.md`.  
+7. Group and order tasks logically — by **Day/Phase**, **Module**, or **Milestone**.  
+8. Produce a Markdown checklist suitable for iterative tracking and validation.  
+9. Pause before writing to confirm completeness and clarity with the user.
 
 ---
 
@@ -83,7 +85,18 @@ It should include the following sections:
 7. **References**
    - Link back to `/docs/foundation/project-prd.md` and `/docs/foundation/architecture.md`  
    - Mention `/docs/schema.sql` if relevant  
-   - Note the next phase to begin after checklist completion
+   - Note the next phase to begin after checklist completion  
+
+8. **Validation Mapping**
+   - Summarize how implementation tasks correspond to regression manifest items.  
+   - Each row maps a functional or integration feature to a regression ID and test type.  
+
+   Example:
+
+   | Task | Regression ID | Test Type | Status |
+   |------|----------------|-----------|--------|
+   | Implement Real-Time Sync | R-001 | Functional | ☐ |
+   | AI Agent Command Parser | R-010 | Integration | ☐ |
 
 ---
 

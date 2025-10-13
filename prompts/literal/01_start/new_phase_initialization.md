@@ -7,7 +7,7 @@ Establish the scope, deliverables, and intended outcomes for this new phase.
 Before proceeding, confirm readiness and assumptions with a short checkpoint summary.
 **Phase Start Template reference**: /prompts/system/01_phase_starter.md
 
-Previous phase documentation: /docs/operations/phases/phase-XX-handoff.md
+Previous phase documentation: /docs/operations/phases/phase-XX-06-handoff.md
 
 PRD, architecture, and dev checklist is located in docs/foundation/ folder
 
