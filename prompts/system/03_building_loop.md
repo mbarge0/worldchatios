@@ -42,7 +42,7 @@ Please:
 The resulting document should be stored as:  
 `/docs/operations/phases/phase-{{phase-number}}-03-build.md`
 
-If `phase-{{phase-number}}-build.md` already exists, 
+If `phase-{{phase-number}}-03-build.md` already exists, 
 append new session entries under a heading:
 ### Continuation Session {{continuation-id}}
 instead of overwriting the file.

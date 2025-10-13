@@ -9,6 +9,6 @@ Before proceeding, confirm readiness and assumptions with a short checkpoint sum
 
 Previous phase documentation: /docs/operations/phases/phase-XX-handoff.md
 
-PRD, architecture, and dev checklist is located at docs/foundation/
+PRD, architecture, and dev checklist is located in docs/foundation/ folder
 
 We're going to do phase , which in the dev checklist is 
