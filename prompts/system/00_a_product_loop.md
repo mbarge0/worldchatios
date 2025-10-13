@@ -22,7 +22,7 @@ Please:
 2. Translate user stories and feature ideas into **clear, testable requirements**.  
 3. Identify and document **constraints, priorities, and scope boundaries**.  
 4. Ensure explicit alignment with **Gauntlet Evaluation Criteria** (below).
-5. (Optional) Include success criteria (e.g., smoothness, clarity of AI feedback, usability) if applicable to the project’s user experience that may not be included in the requirements document.
+5. (Optional) Include success criteria (e.g., smoothness, clarity of AI feedback, usability) if applicable to the project that may not be included in the requirements document.
 6. Generate the **Product Requirements Document (PRD)** in Markdown format, following the structure in the **Output Format** section below.  
 7. Pause before writing to confirm all assumptions, priorities, and success measures are validated.
 
