@@ -25,7 +25,9 @@ Please:
 5. Identify dependencies, integrations, and libraries.  
 6. Note architectural risks, trade-offs, or assumptions.  
 7. Outline scalability, security, and testing considerations.  
-8. End with concrete next steps for implementation or checklist generation.
+8. Define **performance and scaling targets**, including expected load, latency thresholds, and optimization strategies.  
+9. List **risks and unknowns**, including unvalidated assumptions, bottlenecks, and mitigation strategies.  
+10. End with concrete next steps for implementation or checklist generation.
 
 ---
 
@@ -71,15 +73,19 @@ It should include the following sections:
    - Performance expectations, latency goals, and caching strategy  
    - Known trade-offs or performance bottlenecks  
 
-7. **Risks and Unknowns**
-   - Unvalidated assumptions or architectural uncertainties  
-   - Future refactors or scaling considerations  
+7. **Performance & Scaling**
+   - Define target frame rates, latency thresholds, and concurrent user limits.  
+   - Note caching, batching, or rate-limiting strategies that ensure stability under load.  
 
-8. **Design Notes**
+8. **Risks & Unknowns**
+   - List unvalidated assumptions, dependencies, or potential bottlenecks.  
+   - Describe mitigation strategies or future validation plans.  
+
+9. **Design Notes**
    - Architectural principles, naming conventions, and implementation guidelines  
    - Rationale for design decisions or trade-offs  
 
-9. **Next Steps**
+10. **Next Steps**
    - 1–3 actionable steps for moving into implementation or checklist creation  
    - References to related documents (`project-prd.md`, `schema.sql`, etc.)
 
