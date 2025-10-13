@@ -22,7 +22,7 @@ Context reference: see `/docs/requirements/requirements.md` for background and M
 
 ### MVP (P0)
 - **Canvas interactions**: Pan and zoom with smooth 60 FPS rendering
-- **Shapes**: At least one shape type; we will support rectangle and text for MVP (circle optional)
+- **Shapes**: At least one shape type; we will support rectangle and text for MVP (circle optional). Shapes use **solid colors only** (no gradients/patterns).
 - **Object manipulation**: Create, move, resize, rotate; basic delete/duplicate
 - **Text layers**: Create text with font size and basic styling
 - **Selection**: Single and multi-select (shift-click or marquee)
@@ -132,7 +132,7 @@ Out of scope user stories: comments/annotations, per-canvas permissions and invi
 - **Canvas document**
   - `id`, `name`, `objects[]`, `ownerId`, `createdAt`, `updatedAt`
 - **Shape object**
-  - `id`, `type` (`rect|circle|text|line`), `x`, `y`, `width`, `height`, `rotation`, `fill`, `stroke`, `strokeWidth`, `zIndex`, `opacity`
+  - `id`, `type` (`rect|circle|text|line`), `x`, `y`, `width`, `height`, `rotation`, `fill`, `stroke`, `strokeWidth`, `zIndex`, `opacity` (colors are **solid hex** only; opacity separate)
   - Text-specific: `text`, `fontSize`, `fontFamily`, `fontWeight`
   - Collaboration: `createdBy`, `lockedBy` (nullable), `groupId` (nullable), `updatedAt`
 - **Presence/cursor payload**
