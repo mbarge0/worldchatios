@@ -12,7 +12,7 @@ importers:
         specifier: ^0.7.0
         version: 0.7.0(@supabase/supabase-js@2.75.0)
       '@supabase/supabase-js':
-        specifier: ^2.58.0
+        specifier: ^2.75.0
         version: 2.75.0
       '@t3-oss/env-nextjs':
         specifier: ^0.13.8
