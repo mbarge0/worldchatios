@@ -1,6 +1,6 @@
 "use client";
 
-import { app } from "@/lib/firebase"; // make sure this points to your initialized Firebase app
+import { app } from "@/lib/firebase/client";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -10,14 +10,12 @@ export default function Home() {
 
     useEffect(() => {
         const auth = getAuth(app);
-
-        // Watch for changes in authentication state
         const unsubscribe = onAuthStateChanged(auth, (user) => {
             if (user) {
-                // Authenticated → send to main app route
-                router.replace("/app");
+                // ✅ Redirect to your first canvas route
+                router.replace("/c/default");
             } else {
-                // Not authenticated → send to login page
+                // ✅ Not logged in → go to login page
                 router.replace("/login");
             }
         });
@@ -26,15 +24,8 @@ export default function Home() {
     }, [router]);
 
     return (
-        <main className="flex min-h-screen items-center justify-center bg-gray-50">
-            <div className="text-center">
-                <h1 className="text-2xl font-semibold text-gray-700">
-                    Redirecting…
-                </h1>
-                <p className="text-gray-500 mt-2">
-                    Checking authentication status…
-                </p>
-            </div>
+        <main className="flex min-h-screen items-center justify-center">
+            <h1 className="text-3xl font-bold text-center">Loading workspace...</h1>
         </main>
     );
 }

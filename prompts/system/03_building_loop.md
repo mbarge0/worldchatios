@@ -24,7 +24,12 @@ Please:
 5. Record all major code changes, rationale, and testing results in this document.  
 6. If continuing work, summarize prior progress, what remains, and any dependencies to validate.  
 7. Run validation tests and note results before concluding the session.  
-8. Pause before merging or deployment for review or checkpoint creation.
+8. Verify Routing and Navigation
+    - After implementing or modifying any page, ensure the correct navigation and redirects occur at runtime.  
+    - Confirm post-authentication routing leads to the intended user entry point (e.g., `/canvas`, `/dashboard`).  
+    - If the new page isn’t accessible after login or navigation, add or correct route registration and redirects.  
+    - Update test coverage for navigation if applicable (e.g., route guards, redirects, or default pages).
+9. Pause before merging or deployment for review or checkpoint creation.
 
 ---
 
