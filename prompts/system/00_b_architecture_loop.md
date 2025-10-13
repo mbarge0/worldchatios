@@ -62,7 +62,7 @@ It should include the following sections:
 
 4. **Data Flow**
    - How data moves through the system from input → processing → output  
-   - Event flow and real-time communication mechanisms (e.g., Supabase subscriptions)  
+   - Event flow and real-time communication mechanisms (e.g., Firebase RTDB/Firestore listeners)  
 
 5. **Dependencies and Integrations**
    - Libraries, frameworks, and third-party APIs  
