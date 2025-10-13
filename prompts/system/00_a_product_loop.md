@@ -2,7 +2,7 @@
 - **Document Type:** System Prompt
 - **Loop Type:** Product Loop
 - **Mode:** Ask
-- **Output Path:** `/docs/foundation/project-prd.md`
+- **Output Path:** `/docs/foundation/prd.md`
 
 ---
 
@@ -51,7 +51,7 @@ Please:
 ## Output Format
 
 The resulting document should be stored as:  
-`/docs/foundation/project-prd.md`
+`/docs/foundation/prd.md`
 
 It should include the following sections:
 
@@ -99,12 +99,12 @@ It should include the following sections:
 ## Output Instructions
 
 - Before generating the document, confirm with the user:  
-  > “Would you like to create or update the **Product Requirements Document (PRD)** at `/docs/foundation/project-prd.md`?”
+  > “Would you like to create or update the **Product Requirements Document (PRD)** at `/docs/foundation/prd.md`?”
 
 - If confirmed, write the Markdown file to:  
-  `/docs/foundation/project-prd.md`
+  `/docs/foundation/prd.md`
 
 - Standard filenames for project foundation documents:
-  - PRD: `project-prd.md`
+  - PRD: `prd.md`
   - Architecture: `architecture.md`
   - Checklist: `dev_checklist.md`

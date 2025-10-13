@@ -63,7 +63,7 @@ It should include the following sections:
 
 3. **Module Sections**
    - For each module:
-     - **Module Title** (e.g., Authentication, Messaging, Presence)  
+     - **Module Number and Title** (e.g., #1 Authentication, #2 Messaging, #3 Presence)  
      - **Subtasks List** (checkbox list `- [ ] Task Name`)  
      - **Acceptance Criteria** (bullet list or inline for each task)  
      - **Dependencies** (modules or steps required first)  

@@ -7,7 +7,7 @@ When debugging — use the “Debugging Loop” instead.
 
 ---
 
-Let’s create a project context document using the Checklist Loop Template.
+Let’s create a project context document using the Context Loop Template.
 Your goal is to generate or update `/docs/context.md`, the single source of truth for project context across AI tools (Cursor, ChatGPT, Gemini).
 
 Use the Context Loop Template to:
@@ -18,6 +18,6 @@ Use the Context Loop Template to:
 
 When the context snapshot feels complete and accurate, write the result to `/docs/context.md`.
 
-**Context Loop Template reference:** `/prompts/system/06_context_loop.md`
+**Context Loop Template reference:** `/prompts/system/00_d_context_generation.md`
 
 All foundation documents (PRD, Architecture, Dev Checklist, and Regression Checklist) are located in the `/docs/foundation` folder.

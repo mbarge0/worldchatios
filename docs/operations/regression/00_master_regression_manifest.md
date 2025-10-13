@@ -1,4 +1,235 @@
 # 🧭 Master Regression Manifest
+
+---
+
+## Overview
+This document defines regression testing expectations across the project lifecycle. It maps directly to the numbered modules in `docs/foundation/dev_checklist.md` to keep coverage aligned with implementation.
+
+---
+
+## Phase Summary Table
+
+| Phase (Module) | Core Features Introduced | Regression Scope | Dependencies |
+|---|---|---|---|
+| #1 Environment & Tooling | Firebase SDKs, Sentry, Vitest/RTL/Playwright, Vercel envs | N/A (foundation only) | None |
+| #2 Authentication | Email/Password + Magic Link; auth guard | #1 | #1 |
+| #3 Routing & Shell | `/c/[canvasId]` route scaffolding | #1–#2 | #2 |
+| #4 Canvas Engine & UI | Konva stage, pan/zoom, selection, transforms, keyboard | #1–#3 | #3 |
+| #5 Data Model & Persistence | Firestore canvas + shapes; JSON export | #1–#4 | #4 |
+| #6 Realtime Sync & Presence | RTDB presence/cursors; Firestore listeners | #1–#5 | #5 |
+| #7 Conflict Handling & Writes | Transient locks; debounced writes; LWW | #1–#6 | #6 |
+| #8 Shapes & Text | Rectangle + Text CRUD; schema adherence | #1–#7 | #7 |
+| #9 Security Rules | Firestore/RTDB rules | #1–#8 | #8 |
+| #10 Observability & Performance | Sentry capture; rAF/batching; perf guards | #1–#9 | #9 |
+| #11 Deployment (MVP) | Vercel deploy w/ Firebase envs | #1–#10 | #10 |
+| #12 Cross-Module Testing & QA (MVP) | Full-suite MVP E2E + manual matrix | #1–#11 | #11 |
+| #13 AI Agent & Tools (Final) | Tool schema, API proxy, bot identity, chat UI | #1–#12 | #12 |
+| #14 Cross-Module Testing & QA (Final) | E2E regression with AI enabled; manual matrix | #1–#13 | #13 |
+| #15 Deployment (Final) | Production deploy with AI envs; post-deploy checks | #1–#14 | #14 |
+| #16 Post-Deployment Regression (Final) | Full regression and perf pass post-AI | #1–#15 | #15 |
+
+---
+
+## Phase Details
+
+### Module #1: Environment & Tooling
+**Introduced Features:**
+- Firebase SDKs (Auth, Firestore, RTDB), Sentry, Vitest/RTL/Playwright, Vercel envs
+
+**Regression Scope:**
+- N/A (foundation), but future phases must keep boot/tests/observability working
+
+**Dependencies:**
+- Base for all modules
+
+---
+
+### Module #2: Authentication
+**Introduced Features:**
+- Email/Password + Magic Link auth, auth gate for canvas route, display name fallback
+
+**Regression Scope:**
+- After any change: sign-in/sign-up/Magic Link continue to work; auth gate respected
+
+**Dependencies:**
+- #1
+
+---
+
+### Module #3: Routing & Shell
+**Introduced Features:**
+- App Router route `/c/[canvasId]` with canvas shell
+
+**Regression Scope:**
+- Route remains reachable and protected; invalid IDs handled cleanly
+
+**Dependencies:**
+- #2
+
+---
+
+### Module #4: Canvas Engine & UI
+**Introduced Features:**
+- Konva stage, pan/zoom, selection (single/multi), transforms, keyboard shortcuts
+
+**Regression Scope:**
+- Maintain 60 FPS interactions; selection and transforms remain functional across updates
+
+**Dependencies:**
+- #3
+
+---
+
+### Module #5: Data Model & Persistence
+**Introduced Features:**
+- Firestore `canvases/{canvasId}` and `shapes/{shapeId}`; JSON export
+
+**Regression Scope:**
+- Reload restores state; export JSON valid; schema backward compatible
+
+**Dependencies:**
+- #4
+
+---
+
+### Module #6: Realtime Sync & Presence
+**Introduced Features:**
+- RTDB presence/cursors (~20 Hz), Firestore listeners for shapes
+
+**Regression Scope:**
+- Cursor latency <50 ms; object sync <100 ms; reconnect/presence stability
+
+**Dependencies:**
+- #5
+
+---
+
+### Module #7: Conflict Handling & Write Strategy
+**Introduced Features:**
+- `lockedBy` transient locks (5s TTL), debounced writes (~75 ms), LWW
+
+**Regression Scope:**
+- Competing edits controlled; locks clear reliably; end state consistent
+
+**Dependencies:**
+- #6
+
+---
+
+### Module #8: Shapes & Text
+**Introduced Features:**
+- Rectangle and Text CRUD with solid colors, opacity, zIndex; text editing
+
+**Regression Scope:**
+- Create/move/resize/rotate/delete stable; text styling intact; schema respected
+
+**Dependencies:**
+- #7
+
+---
+
+### Module #9: Security Rules
+**Introduced Features:**
+- Firestore/RTDB rules enforcing auth and path restrictions
+
+**Regression Scope:**
+- Unauthorized blocked; authorized allowed; presence path constrained
+
+**Dependencies:**
+- #8
+
+---
+
+### Module #10: Observability & Performance
+**Introduced Features:**
+- Sentry capture; rAF/batching; hidden-tab unsubscribes
+
+**Regression Scope:**
+- Errors reported; perf remains within targets as features evolve
+
+**Dependencies:**
+- #9
+
+---
+
+### Module #11: Deployment (MVP)
+**Introduced Features:**
+- Vercel deployment with Firebase envs
+
+**Regression Scope:**
+- Live app maintains auth, presence, sync; smoke E2E stays green post-deploy
+
+**Dependencies:**
+- #10
+
+---
+
+### Module #12: Cross-Module Testing & QA (MVP)
+**Introduced Features:**
+- MVP E2E suite and manual matrix
+
+**Regression Scope:**
+- Regression runs remain green after subsequent modules
+
+**Dependencies:**
+- #11
+
+---
+
+### Module #13: AI Agent & Tools (Final)
+**Introduced Features:**
+- Tool schema, Next.js API proxy, bot user, minimal chat UI
+
+**Regression Scope:**
+- Agent actions broadcast to all clients; base MVP behaviors unaffected
+
+**Dependencies:**
+- #12
+
+---
+
+### Module #14: Cross-Module Testing & QA (Final)
+**Introduced Features:**
+- Full E2E regression with AI enabled; manual matrix (AI build)
+
+**Regression Scope:**
+- All MVP flows pass with AI enabled; AI + human co-edit scenarios stable
+
+**Dependencies:**
+- #13
+
+---
+
+### Module #15: Deployment (Final)
+**Introduced Features:**
+- Production deploy with AI envs; post-deploy validation
+
+**Regression Scope:**
+- Presence, sync, and AI actions verified on production
+
+**Dependencies:**
+- #14
+
+---
+
+### Module #16: Post-Deployment Regression (Final)
+**Introduced Features:**
+- Post-deploy regression and performance pass
+
+**Regression Scope:**
+- Re-run MVP + AI suites; verify performance targets under load
+
+**Dependencies:**
+- #15
+
+---
+
+## Notes
+- This manifest defines what must be verified, not outcomes.
+- Update only when the phase structure or dependencies change.
+- Per-phase debug docs should reference this manifest when executing regression.
+
+# 🧭 Master Regression Manifest
 ## Slack Lite - Dry Run Edition
 
 **Project:** Slack Lite (Dry Run Edition)  
