@@ -1,0 +1,105 @@
+## Metadata
+- **Phase:** {{phase-number}}
+- **Mode:** Ask
+- **Output Path:** `/docs/operations/phases/phase-{{phase-number}}-02-plan.md`
+
+---
+
+# Planning Loop System Prompt
+
+Use this when revisiting or refining a phase’s plan for development.  
+This is not for system architecture design — use the **Architecture Loop System Prompt** for that.
+
+---
+
+## Prompt Template
+
+We are entering a **Planning Loop** within the current phase.  
+The goal is to realign on scope, strategy, and direction before continuing implementation.
+
+Please:
+1. Review current progress and summarize completed work so far.  
+2. Identify blockers, technical unknowns, or workflow friction points.  
+3. Adjust or clarify scope, priorities, or sequencing if needed.  
+4. Update risk assessment and mitigation strategies.  
+5. Perform Regression Planning:
+   - Identify which previously completed phases could be impacted by this phase’s work.  
+   - Reference `/docs/operations/regression/00_master_regression_manifest.md` to determine relevant dependencies.  
+   - List specific features, flows, or modules that must remain functional after this phase.  
+   - Add regression checks to this phase’s debugging plan.
+6. Reconfirm success criteria for the remainder of the phase.  
+7. Propose the next set of clear, actionable steps to resume execution.
+
+---
+
+## Guidance Notes
+- Keep this focused on short-term planning and tactical clarity.  
+- Avoid re-architecting or rewriting — those belong in the **Architecture Loop**.  
+- Use this prompt to ensure development stays aligned with PRD, architecture, and checklist expectations.  
+- Document regression dependencies early — this ensures the **Debugging Loop** will automatically test prior functionality during regression verification.  
+- Capture any course corrections or decisions that should inform future phases.
+
+---
+
+## Detailed Planning Mode (Optional)
+
+When entering a **major feature phase** (e.g., Module 2 Authentication), expand this loop into a *Detailed Phase Plan* with granular, implementation-ready tasks.
+
+### Output Expectations
+The resulting document should mirror the following structure:
+
+- **Overview** — describe the phase, goals, and time estimate  
+- **Task Summary** — total tasks, priorities, and effort breakdown  
+- **Dependency Graph** — ASCII or text visualization of task dependencies  
+- **Task Breakdown** — each task with ID, description, acceptance criteria, implementation steps, and outputs  
+- **Critical Path** — ordered chain of blocking tasks  
+- **Risk Mitigation** — top risks and mitigations per task or feature  
+- **Regression Plan** — list of prior systems or features that must remain functional, based on the Master Regression Manifest  
+- **Success Metrics** — measurable outcomes and definition of done  
+- **Checkpoint Schedule** — planned commit points and timing  
+- **Next Steps** — what happens immediately after planning  
+
+This mode is ideal for complex modules that require step-by-step coordination across components or systems.
+
+---
+
+## Output Format
+
+The resulting document should be stored as:  
+`/docs/operations/phases/phase-{{phase-number}}-02-plan.md`
+
+It should include the following sections:
+
+1. **Phase Context**
+   - Phase number, name, and current progress summary  
+   - Date and reason for entering this planning loop  
+
+2. **Current Status**
+   - Summary of work completed so far  
+   - Progress toward goals and deliverables  
+
+3. **Issues and Blockers**
+   - Technical or workflow blockers identified  
+   - Proposed resolutions or workarounds  
+
+4. **Scope Adjustments**
+   - Any updates to goals, deliverables, or timelines  
+   - Newly added or deferred tasks  
+
+5. **Risk Assessment**
+   - New or evolving risks discovered mid-phase  
+   - Mitigation strategies and responsible parties  
+
+6. **Regression Plan**
+   - Previously built systems this phase may affect  
+   - Regression risks identified  
+   - Features that must remain stable post-phase  
+   - Reference entries from `/docs/operations/regression/00_master_regression_manifest.md`
+
+7. **Updated Success Criteria**
+   - What “done” looks like after this replan  
+   - Key measurable outcomes  
+
+8. **Next Steps**
+   - Ordered action list to continue development  
+   - Dependencies or checkpoints to confirm before resuming

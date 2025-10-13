@@ -1,0 +1,9 @@
+{
+  "scripts": [
+    {
+      "command": "./scripts/autostart-checkpoint.sh",
+      "name": "Gauntlet Checkpoint Reminder",
+      "autoStart": true
+    }
+  ]
+}
