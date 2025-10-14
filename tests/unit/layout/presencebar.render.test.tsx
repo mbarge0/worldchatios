@@ -10,9 +10,9 @@ describe('PresenceBar', () => {
         ]
         render(<PresenceBar users={users} />)
         expect(screen.getByLabelText('Presence avatars')).toBeInTheDocument()
-        // Avatar uses title/displayName
-        expect(screen.getByTitle('Alice')).toBeInTheDocument()
-        expect(screen.getByTitle('Bob')).toBeInTheDocument()
+        // Avatar uses title/displayName (multiple nodes contain the same title)
+        expect(screen.getAllByTitle('Alice').length).toBeGreaterThan(0)
+        expect(screen.getAllByTitle('Bob').length).toBeGreaterThan(0)
     })
 })
 

@@ -9,6 +9,7 @@ export type RemoteCursor = {
     color: string
     x: number
     y: number
+    ts?: number
 }
 
 type CursorLayerProps = {
@@ -84,22 +85,28 @@ export default function CursorLayer({ cursors }: CursorLayerProps) {
 
     return (
         <Layer listening={false} data-testid="presence-layer">
-            {animatedCursors.map((c) => (
-                <Label key={`cursor-${c.userId}`} x={c.x} y={c.y} opacity={0.9}>
-                    <Line points={[0, 0, 12, 12]} stroke={c.color} strokeWidth={2} />
-                    <Tag
-                        x={14}
-                        y={4}
-                        fill={c.color}
-                        cornerRadius={6}
-                        shadowColor="#00000040"
-                        shadowBlur={2}
-                        shadowOffset={{ x: 0, y: 1 }}
-                        shadowOpacity={0.2}
-                    />
-                    <Text x={20} y={6} text={c.displayName} fontSize={12} fill="#ffffff" />
-                </Label>
-            ))}
+            {animatedCursors.map((c) => {
+                const ageMs = typeof c.ts === 'number' ? Date.now() - c.ts : 0
+                const maxAge = 10000 // 10s to fade out
+                const t = Math.max(0, Math.min(1, 1 - ageMs / maxAge))
+                const labelOpacity = 0.3 + 0.6 * t // 0.3..0.9
+                if (t <= 0) return null
+                return (
+                    <Label key={`cursor-${c.userId}`} x={c.x} y={c.y} opacity={labelOpacity}>
+                        <Line points={[0, 0, 12, 12]} stroke={c.color} strokeWidth={2} />
+                        <Tag
+                            x={14}
+                            y={4}
+                            fill={c.color}
+                            cornerRadius={6}
+                            shadowColor="#00000040"
+                            shadowBlur={2}
+                            shadowOffset={{ x: 0, y: 1 }}
+                            shadowOpacity={0.2}
+                        />
+                        <Text x={20} y={6} text={c.displayName} fontSize={12} fill="#ffffff" />
+                    </Label>)
+            })}
         </Layer>
     )
 }

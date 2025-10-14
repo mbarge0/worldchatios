@@ -7,6 +7,7 @@ export type PresenceUser = {
     displayName: string
     online: boolean
     idle?: boolean
+    color?: string
 }
 
 type PresenceBarProps = {
@@ -20,7 +21,7 @@ export default function PresenceBar({ users, className }: PresenceBarProps) {
             {users.map((u) => (
                 <div key={u.userId} className="flex items-center" title={u.displayName} aria-label={u.displayName}>
                     <div className={u.online ? (u.idle ? 'opacity-70' : 'opacity-100') : 'opacity-40'}>
-                        <Avatar displayName={u.displayName} size="sm" />
+                        <Avatar displayName={u.displayName} size="sm" bgColor={u.color} />
                     </div>
                 </div>
             ))}
