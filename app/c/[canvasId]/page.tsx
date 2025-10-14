@@ -1,7 +1,8 @@
 'use client'
 
 import AuthGuard from '@/components/layout/AuthGuard'
-import Avatar from '@/components/ui/Avatar'
+import PresenceBar from '@/components/layout/PresenceBar'
+import AuthHeader from '@/components/layout/AuthHeader'
 import Toolbar from '@/components/ui/Toolbar'
 import { createShape } from '@/lib/data/firestore-adapter'
 import { usePresence } from '@/lib/hooks/usePresence'
@@ -15,6 +16,12 @@ export default function CanvasPage() {
     const { participantsRef, version } = usePresence(canvasId)
 
     const participants = Object.values(participantsRef.current || {}).sort((a, b) => a.displayName.localeCompare(b.displayName))
+    const presenceUsers = participants.map((p) => ({
+        userId: p.userId,
+        displayName: p.displayName,
+        online: p.online,
+        idle: (Date.now() - (p.ts || 0)) > 2 * 60 * 1000,
+    }))
 
     const handleAddText = async () => {
         if (!canvasId) return
@@ -64,17 +71,12 @@ export default function CanvasPage() {
     return (
         <AuthGuard>
             <div data-testid="canvas-shell" className="min-h-screen flex flex-col">
-                <header data-testid="canvas-header" className="flex items-center justify-between border-b px-6 py-3">
+                <header data-testid="canvas-header" className="flex items-center justify-between border-b bg-white/90 backdrop-blur px-6 h-[52px] lg:h-14">
                     <h1 className="text-xl font-semibold">Canvas</h1>
                     <div className="flex items-center gap-4">
                         <Toolbar onAddRect={handleAddRect} onAddText={handleAddText} />
-                        <div className="hidden md:flex items-center gap-2" aria-label="Presence avatars">
-                            {participants.map((p) => (
-                                <div key={p.userId} className="flex items-center gap-2" title={p.displayName}>
-                                    <Avatar displayName={p.displayName} size="sm" />
-                                </div>
-                            ))}
-                        </div>
+                        <PresenceBar users={presenceUsers} />
+                        <AuthHeader />
                         <span className="text-xs text-gray-500">ID: {canvasId}</span>
                     </div>
                 </header>

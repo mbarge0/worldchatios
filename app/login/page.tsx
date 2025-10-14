@@ -64,80 +64,88 @@ export default function LoginPage() {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
             <div className="w-full max-w-md space-y-6">
-                <h1 className="text-2xl font-semibold">Sign in</h1>
+                <div className="text-center space-y-1">
+                    <h1 className="text-2xl font-semibold tracking-tight">CollabCanvas</h1>
+                    <p className="text-sm text-slate-600">Design together, in real time.</p>
+                </div>
 
-                {user ? (
-                    <div className="space-y-4">
-                        <p>You are signed in as {user.email}</p>
-                        <Button variant="secondary" onClick={signOut}>Sign out</Button>
-                    </div>
-                ) : (
-                    <>
-                        <div className="flex gap-2">
-                            <Button
-                                variant={mode === 'magic' ? 'primary' : 'secondary'}
-                                onClick={() => setMode('magic')}
-                            >
-                                Magic Link
-                            </Button>
-                            <Button
-                                variant={mode === 'password' ? 'primary' : 'secondary'}
-                                onClick={() => setMode('password')}
-                            >
-                                Email & Password
-                            </Button>
-                        </div>
+                <div className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
+                    <h2 className="text-lg font-medium mb-4">Sign in</h2>
 
+                    {user ? (
                         <div className="space-y-4">
-                            <Input
-                                label="Email"
-                                type="email"
-                                placeholder="you@example.com"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                            />
-
-                            {mode === 'password' && (
-                                <Input
-                                    label="Password"
-                                    type="password"
-                                    placeholder="••••••••"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                />
-                            )}
-
-                            {message && <p className="text-sm text-green-700">{message}</p>}
-                            {error && <p className="text-sm text-red-600">{error}</p>}
-
-                            {mode === 'magic' ? (
-                                <Button onClick={onSendMagic} loading={submitting} disabled={!email}>
-                                    Send Magic Link
-                                </Button>
-                            ) : (
-                                <div className="flex gap-2">
-                                    <Button
-                                        onClick={onPasswordSignIn}
-                                        loading={submitting}
-                                        disabled={!email || !password}
-                                    >
-                                        Sign In
-                                    </Button>
-                                    <Button
-                                        variant="secondary"
-                                        onClick={onPasswordSignUp}
-                                        loading={submitting}
-                                        disabled={!email || !password}
-                                    >
-                                        Sign Up
-                                    </Button>
-                                </div>
-                            )}
+                            <p>You are signed in as {user.email}</p>
+                            <Button variant="secondary" onClick={signOut}>Sign out</Button>
                         </div>
-                    </>
-                )}
+                    ) : (
+                        <>
+                            <div className="flex gap-2">
+                                <Button
+                                    variant={mode === 'magic' ? 'primary' : 'secondary'}
+                                    onClick={() => setMode('magic')}
+                                >
+                                    Magic Link
+                                </Button>
+                                <Button
+                                    variant={mode === 'password' ? 'primary' : 'secondary'}
+                                    onClick={() => setMode('password')}
+                                >
+                                    Email & Password
+                                </Button>
+                            </div>
+
+                            <div className="space-y-4 mt-4">
+                                <Input
+                                    label="Email"
+                                    type="email"
+                                    placeholder="you@example.com"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                />
+
+                                {mode === 'password' && (
+                                    <Input
+                                        label="Password"
+                                        type="password"
+                                        placeholder="••••••••"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                    />
+                                )}
+
+                                {message && <p className="text-sm text-emerald-700">{message}</p>}
+                                {error && <p className="text-sm text-rose-600">{error}</p>}
+
+                                {mode === 'magic' ? (
+                                    <Button onClick={onSendMagic} loading={submitting} disabled={!email}>
+                                        Send Magic Link
+                                    </Button>
+                                ) : (
+                                    <div className="flex gap-2">
+                                        <Button
+                                            onClick={onPasswordSignIn}
+                                            loading={submitting}
+                                            disabled={!email || !password}
+                                        >
+                                            Sign In
+                                        </Button>
+                                        <Button
+                                            variant="secondary"
+                                            onClick={onPasswordSignUp}
+                                            loading={submitting}
+                                            disabled={!email || !password}
+                                        >
+                                            Sign Up
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    )}
+                </div>
+                <p className="text-center text-xs text-slate-500">By continuing, you agree to our terms.</p>
             </div>
         </div>
     )
