@@ -1,6 +1,6 @@
 import { db } from '@/lib/firebase'
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, orderBy, query, serverTimestamp, setDoc, Timestamp, updateDoc } from 'firebase/firestore'
 import type { CanvasDoc, ShapeDoc } from '@/types/database'
+import { addDoc, collection, deleteDoc, deleteField, doc, getDoc, getDocs, onSnapshot, orderBy, query, setDoc, Timestamp, updateDoc } from 'firebase/firestore'
 
 // Utilities
 export function toMillis(ts: Timestamp | number | undefined): number {
@@ -80,4 +80,17 @@ export function onShapesSnapshot(
         const shapes = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ShapeDoc, 'id'>) }))
         cb(shapes)
     })
+}
+
+// Lock helpers
+export async function setShapeLock(canvasId: string, shapeId: string, userId: string): Promise<void> {
+    await updateDoc(shapeDoc(canvasId, shapeId), { lockedBy: { userId, ts: nowMillis() }, updatedAt: nowMillis() })
+}
+
+export async function refreshShapeLock(canvasId: string, shapeId: string, userId: string): Promise<void> {
+    await updateDoc(shapeDoc(canvasId, shapeId), { lockedBy: { userId, ts: nowMillis() }, updatedAt: nowMillis() })
+}
+
+export async function clearShapeLock(canvasId: string, shapeId: string): Promise<void> {
+    await updateDoc(shapeDoc(canvasId, shapeId), { lockedBy: deleteField(), updatedAt: nowMillis() })
 }

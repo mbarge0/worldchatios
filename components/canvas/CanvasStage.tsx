@@ -1,8 +1,9 @@
 'use client'
 
+import { usePresence } from '@/lib/hooks/usePresence'
 import { useCanvasStore } from '@/lib/store/canvas-store'
 import { useEffect, useRef, useState } from 'react'
-import { Layer, Stage } from 'react-konva'
+import { Layer, Line, Stage, Text } from 'react-konva'
 import SelectionLayer from './SelectionLayer'
 import ShapeLayer from './ShapeLayer'
 import TransformHandles from './TransformHandles'
@@ -10,9 +11,10 @@ import TransformHandles from './TransformHandles'
 type CanvasStageProps = {
     width?: number
     height?: number
+    canvasId?: string
 }
 
-export default function CanvasStage({ width, height }: CanvasStageProps) {
+export default function CanvasStage({ width, height, canvasId }: CanvasStageProps) {
     const containerRef = useRef<HTMLDivElement | null>(null)
     const [containerSize, setContainerSize] = useState<{ width: number; height: number }>({
         width: width ?? 0,
@@ -30,6 +32,9 @@ export default function CanvasStage({ width, height }: CanvasStageProps) {
         nudgeSelected,
         selectedIds,
     } = useCanvasStore()
+
+    // presence hook
+    const { cursorsRef, sendCursor } = usePresence(canvasId)
 
     // --- 1. Measure size (with safe fallback + animation frame) ---
     useEffect(() => {
@@ -144,8 +149,16 @@ export default function CanvasStage({ width, height }: CanvasStageProps) {
         lastPosRef.current = { x: pointer.x, y: pointer.y }
     }
     const handleMouseMove = (e: any) => {
+        const stage = e.target.getStage()
+        if (!stage) return
+        const pointer = stage.getPointerPosition()
+        if (pointer) {
+            // convert to world coords (inverse of viewport transform)
+            const worldX = (pointer.x - viewport.position.x) / viewport.scale
+            const worldY = (pointer.y - viewport.position.y) / viewport.scale
+            sendCursor(worldX, worldY)
+        }
         if (mode !== 'panning') return
-        const pointer = e.target.getStage()?.getPointerPosition()
         if (!pointer || !lastPosRef.current) return
         const dx = pointer.x - lastPosRef.current.x
         const dy = pointer.y - lastPosRef.current.y
@@ -161,7 +174,9 @@ export default function CanvasStage({ width, height }: CanvasStageProps) {
     const stageWidth = containerSize.width || window.innerWidth
     const stageHeight = containerSize.height || window.innerHeight
 
-    // --- 5. Render Stage unconditionally (no gating) ---
+    const remoteCursors = Object.values(cursorsRef.current)
+
+    // --- 5. Render Stage ---
     return (
         <div
             ref={containerRef}
@@ -188,6 +203,15 @@ export default function CanvasStage({ width, height }: CanvasStageProps) {
                     <ShapeLayer />
                     <SelectionLayer />
                     <TransformHandles />
+                </Layer>
+                {/* Render remote cursors in world space; they inherit stage transform */}
+                <Layer listening={false} data-testid="presence-layer">
+                    {remoteCursors.map((c) => (
+                        <>
+                            <Line points={[c.x, c.y, c.x + 12, c.y + 12]} stroke={c.color} strokeWidth={2} key={`cursor-line-${c.userId}`} />
+                            <Text x={c.x + 14} y={c.y + 8} text={c.displayName} fill={c.color} fontSize={12} key={`cursor-text-${c.userId}`} />
+                        </>
+                    ))}
                 </Layer>
             </Stage>
         </div>

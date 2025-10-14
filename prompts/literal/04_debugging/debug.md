@@ -7,6 +7,6 @@ Generate a regression checklist for this phase based on `/docs/operations/00_reg
 Summarize results clearly — list ✅ working features, ⚠️ issues discovered (with severity), and 🧩 fixes applied or deferred.  
 Conclude with a stability confidence rating (High / Medium / Low) and confirm readiness to proceed to the Reflection phase.  
 Store the resulting debug report under:  
-`/docs/operations/phases/phase-0X-debug.md`
+`/docs/operations/phases/phase-XX-04-debug.md`
 
 **Debugging Loop Template reference**: `/prompts/system/04_debugging_loop.md`

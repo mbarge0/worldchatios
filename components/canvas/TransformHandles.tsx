@@ -1,6 +1,8 @@
 'use client'
 
+import { useShapeWriter } from '@/lib/hooks/useShapeWriter'
 import { useCanvasStore } from '@/lib/store/canvas-store'
+import { useParams } from 'next/navigation'
 import { useMemo, useRef, useState } from 'react'
 import { Circle, Group, Rect } from 'react-konva'
 
@@ -17,12 +19,16 @@ export default function TransformHandles() {
         return { x: minX, y: minY, width: maxX - minX, height: maxY - minY }
     }, [selectedNodes])
 
+    const { canvasId } = useParams<{ canvasId: string }>()
+    const { beginTransform, debouncedUpdate, commitTransform } = useShapeWriter(canvasId)
+
     const dragStartRef = useRef<{ x: number; y: number } | null>(null)
     const originalBBoxRef = useRef<{ x: number; y: number; width: number; height: number } | null>(null)
     const originalNodesRef = useRef<Record<string, { x: number; y: number; width: number; height: number; rotation: number }>>({})
     const activeCornerRef = useRef<'tl' | 'tr' | 'bl' | 'br' | null>(null)
     const rafPendingRef = useRef(false)
     const handleDragStart = (e: any) => {
+        if (selectedNodes.length === 1) beginTransform(selectedNodes[0].id)
         dragStartRef.current = { x: e.target.x(), y: e.target.y() }
     }
     const handleDragMove = (e: any) => {
@@ -30,9 +36,11 @@ export default function TransformHandles() {
         const dx = e.target.x() - dragStartRef.current.x
         const dy = e.target.y() - dragStartRef.current.y
         updateSelectedNodes((node) => ({ ...node, x: node.x + dx, y: node.y + dy }))
+        if (selectedNodes.length === 1) debouncedUpdate(selectedNodes[0].id, { x: selectedNodes[0].x + dx, y: selectedNodes[0].y + dy })
         dragStartRef.current = { x: e.target.x(), y: e.target.y() }
     }
     const handleDragEnd = () => {
+        if (selectedNodes.length === 1) commitTransform(selectedNodes[0].id, selectedNodes[0])
         dragStartRef.current = null
     }
 
@@ -47,6 +55,7 @@ export default function TransformHandles() {
             snapshot[n.id] = { x: n.x, y: n.y, width: n.width, height: n.height, rotation: n.rotation }
         }
         originalNodesRef.current = snapshot
+        if (selectedNodes.length === 1) beginTransform(selectedNodes[0].id)
     }
 
     const handleCornerDragMove = (_corner: 'tl' | 'tr' | 'bl' | 'br') => (e: any) => {
@@ -103,7 +112,7 @@ export default function TransformHandles() {
                 const newCenterY = cy + dy * sy
                 const newW = Math.max(base.width * sx, MIN_SIZE)
                 const newH = Math.max(base.height * sy, MIN_SIZE)
-                return {
+                const next = {
                     ...node,
                     x: newCenterX - newW / 2,
                     y: newCenterY - newH / 2,
@@ -111,6 +120,10 @@ export default function TransformHandles() {
                     height: newH,
                     rotation: base.rotation,
                 }
+                if (selectedNodes.length === 1) {
+                    debouncedUpdate(selectedNodes[0].id, { x: next.x, y: next.y, width: next.width, height: next.height })
+                }
+                return next
             })
         }
 
@@ -125,6 +138,7 @@ export default function TransformHandles() {
     }
 
     const handleCornerDragEnd = () => {
+        if (selectedNodes.length === 1) commitTransform(selectedNodes[0].id, selectedNodes[0])
         activeCornerRef.current = null
         originalBBoxRef.current = null
         originalNodesRef.current = {}
@@ -140,6 +154,7 @@ export default function TransformHandles() {
         const angle = (Math.atan2(py - cy, px - cx) * 180) / Math.PI
         setRotation(angle)
         updateSelectedNodes((node) => ({ ...node, rotation: angle }))
+        if (selectedNodes.length === 1) debouncedUpdate(selectedNodes[0].id, { rotation: angle })
     }
 
     if (!bbox) return null

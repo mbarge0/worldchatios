@@ -23,6 +23,7 @@ export type CanvasStoreActions = {
     setSelection: (ids: string[]) => void
     addToSelection: (id: string) => void
     removeFromSelection: (id: string) => void
+    setNodes: (nodes: CanvasNode[]) => void
     updateNode: (id: string, updates: Partial<CanvasNode>) => void
     updateSelectedNodes: (updater: (node: CanvasNode) => CanvasNode) => void
     removeSelectedNodes: () => void
@@ -53,6 +54,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
     addToSelection: (id) =>
         set((state) => ({ selectedIds: state.selectedIds.includes(id) ? state.selectedIds : [...state.selectedIds, id] })),
     removeFromSelection: (id) => set((state) => ({ selectedIds: state.selectedIds.filter((sid) => sid !== id) })),
+    setNodes: (nodes) => set(() => ({ nodes })),
     updateNode: (id, updates) =>
         set((state) => ({ nodes: state.nodes.map((n) => (n.id === id ? { ...n, ...updates } : n)) })),
     updateSelectedNodes: (updater) =>
