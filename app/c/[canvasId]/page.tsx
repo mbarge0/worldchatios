@@ -85,7 +85,10 @@ export default function CanvasPage() {
                         <span className="hidden md:inline text-xs text-gray-500">ID: {canvasId}</span>
                     </div>
                 </header>
-                <main data-testid="canvas-main" className="flex-1 min-h-0 relative">
+                <main
+                    data-testid="canvas-main"
+                    className="flex-1 relative overflow-hidden"
+                >
                     {/* Left vertical toolbar */}
                     <div className="absolute left-4 top-4 z-10">
                         <div className="flex flex-col gap-2 bg-white/90 backdrop-blur rounded-xl shadow border p-2">
@@ -99,7 +102,11 @@ export default function CanvasPage() {
                             </button>
                         </div>
                     </div>
-                    <div className="h-full bg-white" data-testid="canvas-stage-wrapper">
+
+                    <div
+                        className="absolute inset-0 bg-white"
+                        data-testid="canvas-stage-wrapper"
+                    >
                         <Canvas />
                     </div>
                 </main>
