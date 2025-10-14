@@ -1,9 +1,9 @@
 "use client";
 
+import AuthHeader from '@/components/layout/AuthHeader';
 import { app } from "@/lib/firebase/client";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { useRouter } from "next/navigation";
-import AuthHeader from '@/components/layout/AuthHeader'
 import { useEffect } from "react";
 
 export default function Home() {

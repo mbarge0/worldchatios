@@ -252,7 +252,16 @@ export default function CanvasStage({ width, height, canvasId }: CanvasStageProp
     const stageWidth = containerSize.width || window.innerWidth
     const stageHeight = containerSize.height || window.innerHeight
 
-    const remoteCursors = Object.values(cursorsRef.current)
+    const [remoteCursors, setRemoteCursors] = useState<any[]>([])
+
+    useEffect(() => {
+        const updateCursors = () => {
+            setRemoteCursors(Object.values(cursorsRef.current))
+        }
+
+        const interval = setInterval(updateCursors, 100) // every 100ms for smoothness
+        return () => clearInterval(interval)
+    }, [cursorsRef])
 
     // --- 6. Inline Text Editing Modal ---
     const [editingTextId, setEditingTextId] = useState<string | null>(null)

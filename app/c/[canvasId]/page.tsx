@@ -72,13 +72,15 @@ export default function CanvasPage() {
     return (
         <AuthGuard>
             <div data-testid="canvas-shell" className="min-h-screen flex flex-col bg-slate-50">
-                <header data-testid="canvas-header" className="flex items-center justify-between border-b bg-white/90 backdrop-blur px-6 h-[52px] lg:h-14">
+                <header data-testid="canvas-header" className="grid grid-cols-[1fr_auto_1fr] items-center border-b bg-white/90 backdrop-blur px-6 h-[52px] lg:h-14 shadow-sm">
                     <div className="flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-indigo-600" />
                         <h1 className="text-xl font-semibold">CollabCanvas</h1>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center justify-center">
                         <PresenceBar users={presenceUsers} />
+                    </div>
+                    <div className="flex items-center justify-end gap-4">
                         <AuthHeader />
                         <span className="hidden md:inline text-xs text-gray-500">ID: {canvasId}</span>
                     </div>

@@ -1,12 +1,12 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Label, Layer, Line, Tag, Text } from 'react-konva'
+import { Circle, Group, Layer, Text } from 'react-konva'
 
 export type RemoteCursor = {
     userId: string
-    displayName: string
-    color: string
+    displayName?: string
+    color?: string
     x: number
     y: number
     ts?: number
@@ -17,17 +17,18 @@ type CursorLayerProps = {
 }
 
 export default function CursorLayer({ cursors }: CursorLayerProps) {
-    // Map of animated positions keyed by userId
+    // Track animated positions per user
     const currentPosRef = useRef<Map<string, { x: number; y: number }>>(new Map())
     const targetPosRef = useRef<Map<string, { x: number; y: number }>>(new Map())
     const [tick, setTick] = useState(0)
 
-    // Update target positions when props change; ensure current positions are initialized
+    // Initialize & update target positions
     useEffect(() => {
         for (const c of cursors) {
-            const t = targetPosRef.current.get(c.userId)
-            if (!t) targetPosRef.current.set(c.userId, { x: c.x, y: c.y })
-            else {
+            if (!targetPosRef.current.has(c.userId)) {
+                targetPosRef.current.set(c.userId, { x: c.x, y: c.y })
+            } else {
+                const t = targetPosRef.current.get(c.userId)!
                 t.x = c.x
                 t.y = c.y
             }
@@ -35,7 +36,8 @@ export default function CursorLayer({ cursors }: CursorLayerProps) {
                 currentPosRef.current.set(c.userId, { x: c.x, y: c.y })
             }
         }
-        // Remove any users no longer present
+
+        // Remove stale users
         for (const key of Array.from(currentPosRef.current.keys())) {
             if (!cursors.find((c) => c.userId === key)) {
                 currentPosRef.current.delete(key)
@@ -44,10 +46,10 @@ export default function CursorLayer({ cursors }: CursorLayerProps) {
         }
     }, [cursors])
 
-    // Animation loop: linear interpolation towards target positions
+    // Animation smoothing loop
     useEffect(() => {
         let rafId = 0
-        const smoothing = 0.2 // fraction per frame at 60 FPS; adjust if needed
+        const smoothing = 0.25
         const step = () => {
             let changed = false
             currentPosRef.current.forEach((pos, key) => {
@@ -55,18 +57,14 @@ export default function CursorLayer({ cursors }: CursorLayerProps) {
                 if (!target) return
                 const dx = target.x - pos.x
                 const dy = target.y - pos.y
-                // If close enough, snap; else lerp
-                if (Math.abs(dx) < 0.1 && Math.abs(dy) < 0.1) {
-                    if (pos.x !== target.x || pos.y !== target.y) {
-                        pos.x = target.x
-                        pos.y = target.y
-                        changed = true
-                    }
+                if (Math.abs(dx) < 0.2 && Math.abs(dy) < 0.2) {
+                    pos.x = target.x
+                    pos.y = target.y
                 } else {
                     pos.x += dx * smoothing
                     pos.y += dy * smoothing
-                    changed = true
                 }
+                changed = true
             })
             if (changed) setTick((t) => t + 1)
             rafId = requestAnimationFrame(step)
@@ -75,40 +73,41 @@ export default function CursorLayer({ cursors }: CursorLayerProps) {
         return () => cancelAnimationFrame(rafId)
     }, [])
 
+    // Animated cursor positions
     const animatedCursors = useMemo(() => {
         return cursors.map((c) => {
             const p = currentPosRef.current.get(c.userId) || { x: c.x, y: c.y }
             return { ...c, x: p.x, y: p.y }
         })
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [cursors, tick])
+
+    if (!animatedCursors.length) return null
 
     return (
         <Layer listening={false} data-testid="presence-layer">
             {animatedCursors.map((c) => {
-                const ageMs = typeof c.ts === 'number' ? Date.now() - c.ts : 0
-                const maxAge = 10000 // 10s to fade out
-                const t = Math.max(0, Math.min(1, 1 - ageMs / maxAge))
-                const labelOpacity = 0.3 + 0.6 * t // 0.3..0.9
-                if (t <= 0) return null
+                const color = c.color || '#22c55e' // fallback: green-500
+                const name = c.displayName || 'User'
+                const ageMs = c.ts ? Date.now() - c.ts : 0
+                const opacity = Math.max(0, Math.min(1, 1 - ageMs / 10000)) // fade over 10s
+                if (opacity <= 0) return null
+
                 return (
-                    <Label key={`cursor-${c.userId}`} x={c.x} y={c.y} opacity={labelOpacity}>
-                        <Line points={[0, 0, 12, 12]} stroke={c.color} strokeWidth={2} />
-                        <Tag
-                            x={14}
-                            y={4}
-                            fill={c.color}
-                            cornerRadius={6}
-                            shadowColor="#00000040"
-                            shadowBlur={2}
-                            shadowOffset={{ x: 0, y: 1 }}
-                            shadowOpacity={0.2}
+                    <Group key={c.userId} x={c.x} y={c.y} opacity={opacity}>
+                        {/* Cursor Dot */}
+                        <Circle radius={5} fill={color} stroke="white" strokeWidth={1.5} />
+                        {/* Name Label */}
+                        <Text
+                            text={name}
+                            fontSize={12}
+                            fontFamily="Inter, system-ui, sans-serif"
+                            fill={color}
+                            x={8}
+                            y={-6}
                         />
-                        <Text x={20} y={6} text={c.displayName} fontSize={12} fill="#ffffff" />
-                    </Label>)
+                    </Group>
+                )
             })}
         </Layer>
     )
 }
-
-
