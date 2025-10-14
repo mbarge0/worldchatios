@@ -4,7 +4,7 @@ import { rtdb } from '@/lib/firebase'
 import { deriveDisplayName } from '@/lib/hooks/displayName'
 import { useFirebaseAuth } from '@/lib/hooks/useFirebaseAuth'
 import { onDisconnect, onValue, ref, set, update } from 'firebase/database'
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 function randomColorForUser(userId: string | undefined) {
     if (!userId) return '#8884d8'
@@ -25,6 +25,14 @@ export type RemoteCursor = {
     ts: number
 }
 
+export type Participant = {
+    userId: string
+    displayName: string
+    color: string
+    online: boolean
+    ts: number
+}
+
 export function usePresence(canvasId: string | undefined) {
     const { user } = useFirebaseAuth()
     const uid = user?.uid || 'dev'
@@ -33,6 +41,8 @@ export function usePresence(canvasId: string | undefined) {
 
     const lastSentRef = useRef(0)
     const cursorsRef = useRef<Record<string, RemoteCursor>>({})
+    const participantsRef = useRef<Record<string, Participant>>({})
+    const [version, setVersion] = useState(0)
 
     useEffect(() => {
         if (!canvasId) return
@@ -48,9 +58,15 @@ export function usePresence(canvasId: string | undefined) {
         onDisconnect(presenceRef)
             .remove()
             .catch(console.error)
+
+        // heartbeat to keep presence fresh
+        const heartbeat = setInterval(() => {
+            update(presenceRef, { ts: Date.now(), online: true }).catch(() => { })
+        }, 15000)
         return () => {
             // best-effort offline (onDisconnect will handle abrupt closes)
             set(presenceRef, { online: false, displayName, color, ts: Date.now() }).catch(() => { })
+            clearInterval(heartbeat)
         }
     }, [canvasId, uid, displayName, color])
 
@@ -59,20 +75,31 @@ export function usePresence(canvasId: string | undefined) {
         const allRef = ref(rtdb, `presence/${canvasId}`)
         let unsub = onValue(allRef, (snap) => {
             const val = snap.val() || {}
-            const next: Record<string, RemoteCursor> = {}
+            const nextCursors: Record<string, RemoteCursor> = {}
+            const nextParticipants: Record<string, Participant> = {}
             Object.entries<any>(val).forEach(([id, data]) => {
-                if (id === uid) return
                 const cursor = data.cursor || { x: 0, y: 0, ts: 0 }
-                next[id] = {
+                if (id !== uid) {
+                    nextCursors[id] = {
+                        userId: id,
+                        displayName: data.displayName,
+                        color: data.color,
+                        x: cursor.x,
+                        y: cursor.y,
+                        ts: cursor.ts || 0,
+                    }
+                }
+                nextParticipants[id] = {
                     userId: id,
                     displayName: data.displayName,
                     color: data.color,
-                    x: cursor.x,
-                    y: cursor.y,
-                    ts: cursor.ts || 0,
+                    online: data.online !== false,
+                    ts: data.ts || 0,
                 }
             })
-            cursorsRef.current = next
+            cursorsRef.current = nextCursors
+            participantsRef.current = nextParticipants
+            setVersion((v) => v + 1)
         })
 
         const handleVisibility = () => {
@@ -83,20 +110,31 @@ export function usePresence(canvasId: string | undefined) {
                 // Resume listener when visible
                 unsub = onValue(allRef, (snap) => {
                     const val = snap.val() || {}
-                    const next: Record<string, RemoteCursor> = {}
+                    const nextCursors: Record<string, RemoteCursor> = {}
+                    const nextParticipants: Record<string, Participant> = {}
                     Object.entries<any>(val).forEach(([id, data]) => {
-                        if (id === uid) return
                         const cursor = data.cursor || { x: 0, y: 0, ts: 0 }
-                        next[id] = {
+                        if (id !== uid) {
+                            nextCursors[id] = {
+                                userId: id,
+                                displayName: data.displayName,
+                                color: data.color,
+                                x: cursor.x,
+                                y: cursor.y,
+                                ts: cursor.ts || 0,
+                            }
+                        }
+                        nextParticipants[id] = {
                             userId: id,
                             displayName: data.displayName,
                             color: data.color,
-                            x: cursor.x,
-                            y: cursor.y,
-                            ts: cursor.ts || 0,
+                            online: data.online !== false,
+                            ts: data.ts || 0,
                         }
                     })
-                    cursorsRef.current = next
+                    cursorsRef.current = nextCursors
+                    participantsRef.current = nextParticipants
+                    setVersion((v) => v + 1)
                 })
             }
         }
@@ -114,5 +152,5 @@ export function usePresence(canvasId: string | undefined) {
         update(cursorRef, { cursor: { x, y, ts: now } }).catch(console.error)
     }
 
-    return useMemo(() => ({ cursorsRef, sendCursor, color }), [cursorsRef, sendCursor, color])
+    return useMemo(() => ({ cursorsRef, participantsRef, sendCursor, color, version }), [cursorsRef, participantsRef, sendCursor, color, version])
 }
