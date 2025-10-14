@@ -15,10 +15,38 @@ export function useShapesSync(canvasId: string | undefined) {
     const { setNodes } = useCanvasStore()
     const echoRef = useRef<EchoFilter>({ recentlyUpdated: new Set<string>(), windowMs: 150 })
     const timeoutsRef = useRef<Map<string, any>>(new Map())
+    const pendingRef = useRef<ShapeDoc[] | null>(null)
+    const rafIdRef = useRef<number | null>(null)
 
     const applyShapesToStore = (shapes: ShapeDoc[]) => {
-        const nodes = shapes.map((s) => ({ id: s.id, x: s.x, y: s.y, width: s.width, height: s.height, rotation: s.rotation }))
-        setNodes(nodes)
+        const nodes = shapes.map((s) => {
+            const base = {
+                id: s.id,
+                type: s.type,
+                x: s.x,
+                y: s.y,
+                width: s.width,
+                height: s.height,
+                rotation: s.rotation,
+                zIndex: s.zIndex,
+                fill: s.fill,
+                stroke: s.stroke,
+                opacity: s.opacity,
+            } as any
+            if (s.type === 'text') {
+                return {
+                    ...base,
+                    text: s.text,
+                    fontSize: s.fontSize,
+                    fontFamily: s.fontFamily,
+                    fontWeight: s.fontWeight,
+                    textAlign: s.textAlign,
+                    lineHeight: s.lineHeight,
+                }
+            }
+            return base
+        })
+        setNodes(nodes as any)
     }
 
     useEffect(() => {
@@ -26,11 +54,41 @@ export function useShapesSync(canvasId: string | undefined) {
         // initial load
         listShapes(canvasId).then(applyShapesToStore).catch(console.error)
         // realtime subscription
-        const unsub = onShapesSnapshot(canvasId, (shapes) => {
-            // echo prevention placeholder: could compare updatedAt with locally tagged times
-            applyShapesToStore(shapes)
+        let unsub = onShapesSnapshot(canvasId, (shapes) => {
+            // Batch store updates to next animation frame
+            pendingRef.current = shapes
+            if (rafIdRef.current == null) {
+                rafIdRef.current = requestAnimationFrame(() => {
+                    if (pendingRef.current) applyShapesToStore(pendingRef.current)
+                    pendingRef.current = null
+                    rafIdRef.current = null
+                })
+            }
         })
-        return () => unsub()
+
+        const onVis = () => {
+            if (document.hidden) {
+                unsub()
+            } else {
+                unsub = onShapesSnapshot(canvasId, (shapes) => {
+                    pendingRef.current = shapes
+                    if (rafIdRef.current == null) {
+                        rafIdRef.current = requestAnimationFrame(() => {
+                            if (pendingRef.current) applyShapesToStore(pendingRef.current)
+                            pendingRef.current = null
+                            rafIdRef.current = null
+                        })
+                    }
+                })
+            }
+        }
+        document.addEventListener('visibilitychange', onVis)
+        return () => {
+            document.removeEventListener('visibilitychange', onVis)
+            unsub()
+            const rafId = rafIdRef.current
+            if (rafId != null) cancelAnimationFrame(rafId)
+        }
     }, [canvasId])
 
     const tagLocalUpdate = (shapeId: string) => {
