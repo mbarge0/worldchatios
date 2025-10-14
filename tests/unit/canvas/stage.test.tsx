@@ -11,7 +11,9 @@ vi.mock('react-konva', () => {
     const Group = (props: any) => <div data-testid={props['data-testid'] ?? 'Group'}>{props.children}</div>
     const Text = (props: any) => <div data-testid={props['data-testid'] ?? 'Text'}>{props.children}</div>
     const Line = (props: any) => <div data-testid={props['data-testid'] ?? 'Line'}>{props.children}</div>
-    return { Stage, Layer, Rect, Circle, Group, Text, Line }
+    const Label = (props: any) => <div data-testid={props['data-testid'] ?? 'Label'}>{props.children}</div>
+    const Tag = (props: any) => <div data-testid={props['data-testid'] ?? 'Tag'}>{props.children}</div>
+    return { Stage, Layer, Rect, Circle, Group, Text, Line, Label, Tag }
 })
 
 vi.mock('next/navigation', () => ({

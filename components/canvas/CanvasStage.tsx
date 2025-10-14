@@ -4,7 +4,7 @@ import { createShape, deleteShape } from '@/lib/data/firestore-adapter'
 import { usePresence } from '@/lib/hooks/usePresence'
 import { useCanvasStore } from '@/lib/store/canvas-store'
 import { useEffect, useRef, useState } from 'react'
-import { Layer, Line, Stage, Text } from 'react-konva'
+import { Label, Layer, Line, Stage, Tag, Text } from 'react-konva'
 import SelectionLayer from './SelectionLayer'
 import ShapeLayer from './ShapeLayer'
 import TextEditModal from './TextEditModal'
@@ -335,10 +335,20 @@ export default function CanvasStage({ width, height, canvasId }: CanvasStageProp
                 {/* Render remote cursors in world space; they inherit stage transform */}
                 <Layer listening={false} data-testid="presence-layer">
                     {remoteCursors.map((c) => (
-                        <>
-                            <Line points={[c.x, c.y, c.x + 12, c.y + 12]} stroke={c.color} strokeWidth={2} key={`cursor-line-${c.userId}`} />
-                            <Text x={c.x + 14} y={c.y + 8} text={c.displayName} fill={c.color} fontSize={12} key={`cursor-text-${c.userId}`} />
-                        </>
+                        <Label key={`cursor-${c.userId}`} x={c.x} y={c.y} opacity={0.95}>
+                            <Line points={[0, 0, 12, 12]} stroke={c.color} strokeWidth={2} />
+                            <Tag
+                                x={14}
+                                y={4}
+                                fill={c.color}
+                                cornerRadius={4}
+                                shadowColor="#00000040"
+                                shadowBlur={2}
+                                shadowOffset={{ x: 0, y: 1 }}
+                                shadowOpacity={0.2}
+                            />
+                            <Text x={20} y={6} text={c.displayName} fontSize={12} fill="#ffffff" />
+                        </Label>
                     ))}
                 </Layer>
             </Stage>
