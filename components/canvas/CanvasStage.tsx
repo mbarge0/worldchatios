@@ -182,13 +182,17 @@ export default function CanvasStage({ width, height, canvasId }: CanvasStageProp
     // --- 7. Inline Text Editing ---
     const [editingTextId, setEditingTextId] = useState<string | null>(null)
     const { nodes, updateNode } = useCanvasStore()
-    const activeText = editingTextId ? nodes.find((n: any) => n.id === editingTextId) : null
-    const initialText = activeText?.text ?? ''
+    const activeNode = editingTextId ? nodes.find((n: any) => n.id === editingTextId) : undefined
+    const isTextNode = (n: any): n is { id: string; type: 'text'; text: string } => !!n && n.type === 'text'
+    const activeTextNode = isTextNode(activeNode) ? activeNode : undefined
+    const initialText = activeTextNode?.text ?? ''
     const handleEditText = (id: string) => setEditingTextId(id)
     const handleSaveText = async (text: string) => {
         if (!canvasId || !editingTextId) return
         try {
-            updateNode(editingTextId, { text } as any)
+            if (isTextNode(activeNode)) {
+                updateNode(editingTextId, { text } as any)
+            }
             const { updateShape } = await import('@/lib/data/firestore-adapter')
             await updateShape(canvasId, editingTextId, { text } as any)
         } catch (e) {
