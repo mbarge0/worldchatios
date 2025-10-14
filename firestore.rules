@@ -1,0 +1,22 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAuthed() {
+      return request.auth != null;
+    }
+
+    match /canvases/{canvasId} {
+      allow read: if isAuthed();
+      allow write: if isAuthed();
+
+      // Shapes subcollection
+      match /shapes/{shapeId} {
+        allow read: if isAuthed();
+        // Writes allowed only if parent canvas exists
+        allow write: if isAuthed() && exists(/databases/$(database)/documents/canvases/$(canvasId));
+      }
+    }
+  }
+}
+
+

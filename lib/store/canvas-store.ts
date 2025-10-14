@@ -40,8 +40,8 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
     selectedIds: [],
     mode: 'idle',
     nodes: [
-        { id: 'n1', x: 100, y: 100, width: 160, height: 100, rotation: 0 },
-        { id: 'n2', x: 340, y: 160, width: 140, height: 140, rotation: 0 },
+        { id: 'n1', type: 'rect', x: 100, y: 100, width: 160, height: 100, rotation: 0 },
+        { id: 'n2', type: 'rect', x: 340, y: 160, width: 140, height: 140, rotation: 0 },
     ],
 
     setScale: (scale) =>
@@ -67,13 +67,31 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
         })),
 }))
 
-export type CanvasNode = {
+export type CanvasNodeBase = {
     id: string
+    type: 'rect' | 'text'
     x: number
     y: number
     width: number
     height: number
     rotation: number
+    zIndex?: number
+    fill?: string
+    stroke?: string
+    opacity?: number
 }
+
+export type RectNode = CanvasNodeBase & { type: 'rect' }
+export type TextNode = CanvasNodeBase & {
+    type: 'text'
+    text: string
+    fontSize?: number
+    fontFamily?: string
+    fontWeight?: string
+    textAlign?: 'left' | 'center' | 'right'
+    lineHeight?: number
+}
+
+export type CanvasNode = RectNode | TextNode
 
 

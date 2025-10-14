@@ -7,6 +7,10 @@ vi.mock('@/lib/data/firestore-adapter', () => ({
     updateShape: vi.fn(async () => { }),
 }))
 
+vi.mock('@/lib/hooks/useFirebaseAuth', () => ({
+    useFirebaseAuth: () => ({ user: { uid: 'test-user' } }),
+}))
+
 import { useShapeWriter } from '@/lib/hooks/useShapeWriter'
 import { act, renderHook } from '@testing-library/react'
 

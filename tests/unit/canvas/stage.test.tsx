@@ -9,8 +9,22 @@ vi.mock('react-konva', () => {
     const Rect = (props: any) => <div data-testid={props['data-testid'] ?? 'Rect'}>{props.children}</div>
     const Circle = (props: any) => <div data-testid={props['data-testid'] ?? 'Circle'}>{props.children}</div>
     const Group = (props: any) => <div data-testid={props['data-testid'] ?? 'Group'}>{props.children}</div>
-    return { Stage, Layer, Rect, Circle, Group }
+    const Text = (props: any) => <div data-testid={props['data-testid'] ?? 'Text'}>{props.children}</div>
+    const Line = (props: any) => <div data-testid={props['data-testid'] ?? 'Line'}>{props.children}</div>
+    return { Stage, Layer, Rect, Circle, Group, Text, Line }
 })
+
+vi.mock('next/navigation', () => ({
+    useParams: () => ({ canvasId: 'test' }),
+}))
+
+vi.mock('@/lib/hooks/usePresence', () => ({
+    usePresence: () => ({ cursorsRef: { current: {} }, sendCursor: () => { } }),
+}))
+
+vi.mock('@/lib/hooks/useFirebaseAuth', () => ({
+    useFirebaseAuth: () => ({ user: { uid: 'test-user', email: 't@example.com' } }),
+}))
 
 describe('CanvasStage', () => {
     beforeEach(() => {

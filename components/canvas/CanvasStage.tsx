@@ -1,11 +1,13 @@
 'use client'
 
+import { createShape, deleteShape } from '@/lib/data/firestore-adapter'
 import { usePresence } from '@/lib/hooks/usePresence'
 import { useCanvasStore } from '@/lib/store/canvas-store'
 import { useEffect, useRef, useState } from 'react'
 import { Layer, Line, Stage, Text } from 'react-konva'
 import SelectionLayer from './SelectionLayer'
 import ShapeLayer from './ShapeLayer'
+import TextEditModal from './TextEditModal'
 import TransformHandles from './TransformHandles'
 
 type CanvasStageProps = {
@@ -68,7 +70,7 @@ export default function CanvasStage({ width, height, canvasId }: CanvasStageProp
         containerRef.current?.focus()
     }, [])
 
-    const handleKeyDown = (ev: React.KeyboardEvent<HTMLDivElement>) => {
+    const handleKeyDown = async (ev: React.KeyboardEvent<HTMLDivElement>) => {
         const baseStep = ev.shiftKey ? 10 : 1
         const step = baseStep / Math.max(0.0001, viewport.scale)
         if (ev.key === 'ArrowLeft') {
@@ -87,8 +89,83 @@ export default function CanvasStage({ width, height, canvasId }: CanvasStageProp
             clearSelection()
         } else if (ev.key === 'Backspace' || ev.key === 'Delete') {
             if (selectedIds.length > 0) {
+                // Optimistic remove + persist deletions
+                const ids = [...selectedIds]
                 removeSelectedNodes()
+                if (canvasId) {
+                    for (const id of ids) {
+                        deleteShape(canvasId, id).catch(() => { })
+                    }
+                }
                 ev.preventDefault()
+            }
+        } else if (ev.key.toLowerCase() === 't') {
+            // Create a new text shape centered in viewport
+            if (!canvasId) return
+            const id = (typeof crypto !== 'undefined' && (crypto as any).randomUUID) ? (crypto as any).randomUUID() : Math.random().toString(36).slice(2)
+            const centerX = (stageWidth / 2 - viewport.position.x) / viewport.scale
+            const centerY = (stageHeight / 2 - viewport.position.y) / viewport.scale
+            const payload: any = {
+                id,
+                type: 'text',
+                x: centerX,
+                y: centerY,
+                width: 200,
+                height: 40,
+                rotation: 0,
+                zIndex: Date.now(),
+                text: 'New Text',
+                fontSize: 20,
+                fontFamily: 'Inter, system-ui, sans-serif',
+                fontWeight: 'normal',
+                textAlign: 'left',
+                lineHeight: 1.2,
+                fill: '#111827',
+                opacity: 1,
+                updatedAt: Date.now(),
+            }
+            try {
+                await createShape(canvasId, payload)
+            } catch (e) {
+                console.error('createShape(text) failed', e)
+            }
+        } else if (ev.key.toLowerCase() === 'r') {
+            // Create a new rectangle shape centered in viewport
+            if (!canvasId) return
+            const id =
+                typeof crypto !== 'undefined' && (crypto as any).randomUUID
+                    ? (crypto as any).randomUUID()
+                    : Math.random().toString(36).slice(2)
+            const centerX = (stageWidth / 2 - viewport.position.x) / viewport.scale
+            const centerY = (stageHeight / 2 - viewport.position.y) / viewport.scale
+            const payload: any = {
+                id,
+                type: 'rect',
+                x: centerX - 50,
+                y: centerY - 30,
+                width: 100,
+                height: 60,
+                rotation: 0,
+                zIndex: Date.now(),
+                fill: '#60a5fa', // Tailwind blue-400
+                stroke: '#1d4ed8', // Tailwind blue-700
+                opacity: 1,
+                updatedAt: Date.now(),
+            }
+            try {
+                await createShape(canvasId, payload)
+            } catch (e) {
+                console.error('createShape(rect) failed', e)
+            }
+        } else if (ev.key === 'Enter') {
+            // Enter opens editor when single selected text node
+            if (selectedIds.length === 1) {
+                const id = selectedIds[0]
+                const n = (useCanvasStore.getState().nodes as any[]).find((m) => m.id === id)
+                if (n && n.type === 'text') {
+                    setEditingTextId(id)
+                    ev.preventDefault()
+                }
             }
         }
     }
@@ -176,7 +253,58 @@ export default function CanvasStage({ width, height, canvasId }: CanvasStageProp
 
     const remoteCursors = Object.values(cursorsRef.current)
 
-    // --- 5. Render Stage ---
+    // --- 6. Inline Text Editing Modal ---
+    const [editingTextId, setEditingTextId] = useState<string | null>(null)
+    const { nodes, updateNode } = useCanvasStore()
+    const activeText = editingTextId ? (nodes.find((n: any) => n.id === editingTextId) as any) : null
+    const initialText = activeText?.text ?? ''
+    const handleEditText = (id: string) => setEditingTextId(id)
+    const handleSaveText = async (text: string) => {
+        if (!canvasId || !editingTextId) return
+        try {
+            // Optimistic local update
+            updateNode(editingTextId, { text } as any)
+            await createShape // no-op to keep import
+        } catch { }
+        // Persist via adapter update
+        try {
+            const { updateShape } = await import('@/lib/data/firestore-adapter')
+            await updateShape(canvasId, editingTextId, { text } as any)
+        } catch (e) {
+            console.error('updateShape(text) failed', e)
+        }
+    }
+
+    // --- 5. FPS meter (optional via NEXT_PUBLIC_SHOW_FPS=1) ---
+    const [fps, setFps] = useState<number | null>(null)
+    useEffect(() => {
+        if (process.env.NEXT_PUBLIC_SHOW_FPS !== '1') return
+        let last = performance.now()
+        let frames = 0
+        let rafId: number
+        let timerId: any
+        const loop = () => {
+            frames++
+            rafId = requestAnimationFrame(loop)
+        }
+        const tick = () => {
+            const now = performance.now()
+            const delta = now - last
+            const currentFps = (frames * 1000) / Math.max(1, delta)
+            setFps(Math.round(currentFps))
+            frames = 0
+            last = now
+            timerId = setTimeout(tick, 500)
+        }
+        rafId = requestAnimationFrame(loop)
+        timerId = setTimeout(tick, 500)
+        return () => {
+            cancelAnimationFrame(rafId)
+            clearTimeout(timerId)
+        }
+    }, [])
+
+    // --- 6. Render Stage ---
     return (
         <div
             ref={containerRef}
@@ -200,7 +328,7 @@ export default function CanvasStage({ width, height, canvasId }: CanvasStageProp
                 style={{ background: '#fafafa' }}
             >
                 <Layer data-testid="canvas-base-layer">
-                    <ShapeLayer />
+                    <ShapeLayer onEditText={handleEditText} />
                     <SelectionLayer />
                     <TransformHandles />
                 </Layer>
@@ -214,6 +342,15 @@ export default function CanvasStage({ width, height, canvasId }: CanvasStageProp
                     ))}
                 </Layer>
             </Stage>
+            <TextEditModal
+                isOpen={!!editingTextId}
+                initialText={initialText}
+                onClose={() => setEditingTextId(null)}
+                onSave={handleSaveText}
+            />
+            {fps !== null && (
+                <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">{fps} fps</div>
+            )}
         </div>
     )
 }

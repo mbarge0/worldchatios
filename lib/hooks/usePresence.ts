@@ -57,7 +57,7 @@ export function usePresence(canvasId: string | undefined) {
     useEffect(() => {
         if (!canvasId) return
         const allRef = ref(rtdb, `presence/${canvasId}`)
-        const unsub = onValue(allRef, (snap) => {
+        let unsub = onValue(allRef, (snap) => {
             const val = snap.val() || {}
             const next: Record<string, RemoteCursor> = {}
             Object.entries<any>(val).forEach(([id, data]) => {
@@ -74,11 +74,39 @@ export function usePresence(canvasId: string | undefined) {
             })
             cursorsRef.current = next
         })
+
+        const handleVisibility = () => {
+            if (document.hidden) {
+                // Pause listener by unsubscribing when hidden
+                unsub()
+            } else {
+                // Resume listener when visible
+                unsub = onValue(allRef, (snap) => {
+                    const val = snap.val() || {}
+                    const next: Record<string, RemoteCursor> = {}
+                    Object.entries<any>(val).forEach(([id, data]) => {
+                        if (id === uid) return
+                        const cursor = data.cursor || { x: 0, y: 0, ts: 0 }
+                        next[id] = {
+                            userId: id,
+                            displayName: data.displayName,
+                            color: data.color,
+                            x: cursor.x,
+                            y: cursor.y,
+                            ts: cursor.ts || 0,
+                        }
+                    })
+                    cursorsRef.current = next
+                })
+            }
+        }
+        document.addEventListener('visibilitychange', handleVisibility)
         return () => unsub()
     }, [canvasId, uid])
 
     const sendCursor = (x: number, y: number) => {
         const now = Date.now()
+        if (document.hidden) return
         if (now - lastSentRef.current < 50) return // ~20 Hz
         lastSentRef.current = now
         if (!canvasId) return
