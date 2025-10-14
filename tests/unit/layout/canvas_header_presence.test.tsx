@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('next/navigation', () => ({
     useParams: () => ({ canvasId: 'test' }),
+    useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
 }))
 
 vi.mock('@/components/canvas/Canvas', () => ({
@@ -14,6 +15,10 @@ vi.mock('@/components/canvas/Canvas', () => ({
 vi.mock('@/components/layout/AuthGuard', () => ({
     __esModule: true,
     default: ({ children }: any) => <div>{children}</div>,
+}))
+
+vi.mock('@/lib/hooks/useFirebaseAuth', () => ({
+    useFirebaseAuth: () => ({ user: { email: 'test@example.com' }, loading: false, signOut: vi.fn() }),
 }))
 
 vi.mock('@/lib/hooks/usePresence', () => ({
@@ -31,11 +36,9 @@ vi.mock('@/lib/hooks/usePresence', () => ({
 describe('Canvas header presence avatars', () => {
     it('renders avatars for participants', () => {
         render(<CanvasPage />)
-        // Avatar component renders initials; check by title attribute
-        const alice = screen.getByTitle('Alice')
-        const bob = screen.getByTitle('Bob')
-        expect(alice).toBeInTheDocument()
-        expect(bob).toBeInTheDocument()
+        // Avatar component renders initials; multiple nodes can share same title
+        expect(screen.getAllByTitle('Alice').length).toBeGreaterThan(0)
+        expect(screen.getAllByTitle('Bob').length).toBeGreaterThan(0)
     })
 })
 

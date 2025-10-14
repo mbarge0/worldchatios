@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 
 /**
  * Avatar component props interface
@@ -12,6 +11,8 @@ export interface AvatarProps {
   size?: 'sm' | 'md' | 'lg';
   /** Optional additional CSS classes */
   className?: string;
+  /** Optional background color override (e.g., #rrggbb or rgb()) */
+  bgColor?: string;
 }
 
 /**
@@ -37,6 +38,7 @@ export default function Avatar({
   displayName,
   size = 'md',
   className = '',
+  bgColor,
 }: AvatarProps) {
   /**
    * Generate initials from display name
@@ -47,39 +49,40 @@ export default function Avatar({
    */
   const getInitials = (name: string): string => {
     if (!name) return '?';
-    
+
     const trimmedName = name.trim();
     if (trimmedName.length === 0) return '?';
-    
+
     const words = trimmedName.split(/\s+/);
-    
+
     if (words.length === 1) {
       // Single word: take first character (or two if available)
       return trimmedName.slice(0, 1).toUpperCase();
     }
-    
+
     // Multiple words: take first character of first two words
     return (words[0][0] + (words[1]?.[0] || '')).toUpperCase();
   };
-  
+
   // Size styles
   const sizeStyles = {
     sm: 'w-8 h-8 text-sm',
     md: 'w-10 h-10 text-base',
     lg: 'w-12 h-12 text-lg',
   };
-  
+
   const initials = getInitials(displayName);
 
   return (
     <div
       className={`
-        flex-shrink-0 rounded-full bg-indigo-600 
+        flex-shrink-0 rounded-full 
         flex items-center justify-center 
         text-white font-semibold
         ${sizeStyles[size]}
         ${className}
       `}
+      style={bgColor ? { backgroundColor: bgColor } : undefined}
       title={displayName}
       aria-label={`Avatar for ${displayName}`}
     >

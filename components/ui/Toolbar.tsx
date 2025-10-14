@@ -11,7 +11,7 @@ type ToolbarProps = {
 export default function Toolbar({ onAddRect, onAddText, className = '' }: ToolbarProps) {
     return (
         <div className={`flex items-center gap-2 ${className}`}>
-            <Button variant="secondary" onClick={onAddRect}>+ Rect</Button>
+            <Button variant="primary" onClick={onAddRect}>+ Rect</Button>
             <Button variant="secondary" onClick={onAddText}>+ Text</Button>
         </div>
     )
