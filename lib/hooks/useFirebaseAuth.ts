@@ -28,18 +28,24 @@ export interface UseFirebaseAuthReturn {
 const MAGIC_EMAIL_KEY = 'cc_magic_email'
 
 export function useFirebaseAuth(): UseFirebaseAuthReturn {
-    // 🧪 DEV OVERRIDE — skip real Firebase login in local builds
+    // 🧪 DEV OVERRIDE — optional shortcut for local testing
     if (process.env.NODE_ENV === 'development') {
-        return {
-            user: { email: 'dev@local.test' } as any,
-            loading: false,
-            signInWithEmailPassword: async () => ({ error: null }),
-            signUpWithEmailPassword: async () => ({ error: null }),
-            sendMagicLink: async () => ({ error: null }),
-            completeMagicLink: async () => ({ error: null }),
-            signOut: async () => {
-                console.log('🧪 Dev mode: signOut() called (no-op)')
-            },
+        const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
+        const autoDev = params.get('auto') === 'dev'
+
+        if (autoDev) {
+            console.log('🧪 Dev auto-login active: using mock user dev@local.test')
+            return {
+                user: { email: 'dev@local.test' } as any,
+                loading: false,
+                signInWithEmailPassword: async () => ({ error: null }),
+                signUpWithEmailPassword: async () => ({ error: null }),
+                sendMagicLink: async () => ({ error: null }),
+                completeMagicLink: async () => ({ error: null }),
+                signOut: async () => {
+                    console.log('🧪 Dev mode: signOut() called (no-op)')
+                },
+            }
         }
     }
 
