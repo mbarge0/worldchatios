@@ -18,6 +18,10 @@ export default function TransformHandles() {
     }, [selectedNodes])
 
     const dragStartRef = useRef<{ x: number; y: number } | null>(null)
+    const originalBBoxRef = useRef<{ x: number; y: number; width: number; height: number } | null>(null)
+    const originalNodesRef = useRef<Record<string, { x: number; y: number; width: number; height: number; rotation: number }>>({})
+    const activeCornerRef = useRef<'tl' | 'tr' | 'bl' | 'br' | null>(null)
+    const rafPendingRef = useRef(false)
     const handleDragStart = (e: any) => {
         dragStartRef.current = { x: e.target.x(), y: e.target.y() }
     }
@@ -32,40 +36,98 @@ export default function TransformHandles() {
         dragStartRef.current = null
     }
 
-    const handleCornerDragMove = (corner: 'tl' | 'tr' | 'bl' | 'br') => (e: any) => {
+    const MIN_SIZE = 10
+
+    const handleCornerDragStart = (corner: 'tl' | 'tr' | 'bl' | 'br') => (e: any) => {
         if (!bbox) return
-        const newX = e.target.x()
-        const newY = e.target.y()
-        let newWidth = bbox.width
-        let newHeight = bbox.height
-        let originX = bbox.x
-        let originY = bbox.y
-        if (corner === 'tl') {
-            newWidth = bbox.width + (bbox.x - newX)
-            newHeight = bbox.height + (bbox.y - newY)
-            originX = newX
-            originY = newY
-        } else if (corner === 'tr') {
-            newWidth = newX - bbox.x
-            newHeight = bbox.height + (bbox.y - newY)
-            originY = newY
-        } else if (corner === 'bl') {
-            newWidth = bbox.width + (bbox.x - newX)
-            newHeight = newY - bbox.y
-            originX = newX
-        } else if (corner === 'br') {
-            newWidth = newX - bbox.x
-            newHeight = newY - bbox.y
+        activeCornerRef.current = corner
+        originalBBoxRef.current = { ...bbox }
+        const snapshot: Record<string, { x: number; y: number; width: number; height: number; rotation: number }> = {}
+        for (const n of selectedNodes) {
+            snapshot[n.id] = { x: n.x, y: n.y, width: n.width, height: n.height, rotation: n.rotation }
         }
-        const sx = newWidth / bbox.width
-        const sy = newHeight / bbox.height
-        updateSelectedNodes((node) => ({
-            ...node,
-            x: originX + (node.x - bbox.x) * sx,
-            y: originY + (node.y - bbox.y) * sy,
-            width: node.width * sx,
-            height: node.height * sy,
-        }))
+        originalNodesRef.current = snapshot
+    }
+
+    const handleCornerDragMove = (_corner: 'tl' | 'tr' | 'bl' | 'br') => (e: any) => {
+        const corner = activeCornerRef.current
+        const obb = originalBBoxRef.current
+        if (!corner || !obb) return
+
+        // Use absolute position to avoid group-local drift
+        const abs = e.target.getAbsolutePosition()
+        let newWidth = obb.width
+        let newHeight = obb.height
+        let originX = obb.x
+        let originY = obb.y
+
+        if (corner === 'tl') {
+            newWidth = obb.width + (obb.x - abs.x)
+            newHeight = obb.height + (obb.y - abs.y)
+            originX = abs.x
+            originY = abs.y
+        } else if (corner === 'tr') {
+            newWidth = abs.x - obb.x
+            newHeight = obb.height + (obb.y - abs.y)
+            originY = abs.y
+        } else if (corner === 'bl') {
+            newWidth = obb.width + (obb.x - abs.x)
+            newHeight = abs.y - obb.y
+            originX = abs.x
+        } else if (corner === 'br') {
+            newWidth = abs.x - obb.x
+            newHeight = abs.y - obb.y
+        }
+
+        // Enforce minimum size to prevent flipping/shaking
+        newWidth = Math.max(newWidth, MIN_SIZE)
+        newHeight = Math.max(newHeight, MIN_SIZE)
+
+        const sx = newWidth / obb.width
+        const sy = newHeight / obb.height
+
+        const snapshot = originalNodesRef.current
+        const cx = obb.x + obb.width / 2
+        const cy = obb.y + obb.height / 2
+
+        const apply = () => {
+            updateSelectedNodes((node) => {
+                const base = snapshot[node.id]
+                if (!base) return node
+                // Rotation-aware anchoring via center scaling
+                const baseCx = base.x + base.width / 2
+                const baseCy = base.y + base.height / 2
+                const dx = baseCx - cx
+                const dy = baseCy - cy
+                const newCenterX = cx + dx * sx
+                const newCenterY = cy + dy * sy
+                const newW = Math.max(base.width * sx, MIN_SIZE)
+                const newH = Math.max(base.height * sy, MIN_SIZE)
+                return {
+                    ...node,
+                    x: newCenterX - newW / 2,
+                    y: newCenterY - newH / 2,
+                    width: newW,
+                    height: newH,
+                    rotation: base.rotation,
+                }
+            })
+        }
+
+        // rAF batching to reduce jitter
+        if (!rafPendingRef.current) {
+            rafPendingRef.current = true
+            requestAnimationFrame(() => {
+                apply()
+                rafPendingRef.current = false
+            })
+        }
+    }
+
+    const handleCornerDragEnd = () => {
+        activeCornerRef.current = null
+        originalBBoxRef.current = null
+        originalNodesRef.current = {}
     }
 
     const [rotation, setRotation] = useState(0)
@@ -98,10 +160,10 @@ export default function TransformHandles() {
                 strokeWidth={1}
             />
             {/* Corner handles */}
-            <Rect x={-handleSize / 2} y={-handleSize / 2} width={handleSize} height={handleSize} fill="#3B82F6" draggable onDragMove={handleCornerDragMove('tl')} />
-            <Rect x={bbox.width - handleSize / 2} y={-handleSize / 2} width={handleSize} height={handleSize} fill="#3B82F6" draggable onDragMove={handleCornerDragMove('tr')} />
-            <Rect x={-handleSize / 2} y={bbox.height - handleSize / 2} width={handleSize} height={handleSize} fill="#3B82F6" draggable onDragMove={handleCornerDragMove('bl')} />
-            <Rect x={bbox.width - handleSize / 2} y={bbox.height - handleSize / 2} width={handleSize} height={handleSize} fill="#3B82F6" draggable onDragMove={handleCornerDragMove('br')} />
+            <Rect x={-handleSize / 2} y={-handleSize / 2} width={handleSize} height={handleSize} fill="#3B82F6" draggable onDragStart={handleCornerDragStart('tl')} onDragMove={handleCornerDragMove('tl')} onDragEnd={handleCornerDragEnd} />
+            <Rect x={bbox.width - handleSize / 2} y={-handleSize / 2} width={handleSize} height={handleSize} fill="#3B82F6" draggable onDragStart={handleCornerDragStart('tr')} onDragMove={handleCornerDragMove('tr')} onDragEnd={handleCornerDragEnd} />
+            <Rect x={-handleSize / 2} y={bbox.height - handleSize / 2} width={handleSize} height={handleSize} fill="#3B82F6" draggable onDragStart={handleCornerDragStart('bl')} onDragMove={handleCornerDragMove('bl')} onDragEnd={handleCornerDragEnd} />
+            <Rect x={bbox.width - handleSize / 2} y={bbox.height - handleSize / 2} width={handleSize} height={handleSize} fill="#3B82F6" draggable onDragStart={handleCornerDragStart('br')} onDragMove={handleCornerDragMove('br')} onDragEnd={handleCornerDragEnd} />
             {/* Rotate handle */}
             <Circle x={bbox.width / 2} y={-rHandleOffset} radius={6} fill="#10B981" draggable onDragMove={handleRotateDragMove} />
         </Group>

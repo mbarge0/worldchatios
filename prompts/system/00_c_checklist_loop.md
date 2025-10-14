@@ -26,12 +26,13 @@ Please:
    - Dependencies (prerequisite modules or setup)
    - Acceptance criteria (definition of done)
    - Testing expectations (unit, integration, E2E)
-6. Tag each task by phase: `[Plan]`, `[Build]`, `[Debug]`, `[Validate]`.  
+6. Ensure that every build-phase task produces a *verifiable, visible result* — e.g., a rendered UI, a testable endpoint, or a working route. If functionality exists only in code but is not accessible in the app or through tests, treat it as **incomplete** until it can be visually or programmatically verified.
+7. Tag each task by phase: `[Plan]`, `[Build]`, `[Debug]`, `[Validate]`.  
    - Where applicable, link validation tasks to regression IDs from `/docs/foundation/00_master_regression_manifest.md`.  
-7. Organize tasks hierarchically — by **Supermodule → Module → Phase → Task**.  
-8. Ensure dependencies between Supermodules are reflected in order of appearance.  
-9. Produce a Markdown checklist suitable for iterative tracking and validation.  
-10. Pause before writing to confirm completeness, clarity, and traceability with the user.
+8. Organize tasks hierarchically — by **Supermodule → Module → Phase → Task**.  
+9. Ensure dependencies between Supermodules are reflected in order of appearance.  
+10. Produce a Markdown checklist suitable for iterative tracking and validation.  
+11. Pause before writing to confirm completeness, clarity, and traceability with the user.
 
 ---
 

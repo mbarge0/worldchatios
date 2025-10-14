@@ -1,34 +1,27 @@
-"use client";
+'use client'
 
-import { app } from "@/lib/firebase/client"; // make sure this points to your initialized Firebase app
-import { getAuth, onAuthStateChanged } from "firebase/auth";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import AuthGuard from '@/components/layout/AuthGuard'
+import dynamic from 'next/dynamic'
+import { useParams } from 'next/navigation'
 
-export default function Home() {
-    const router = useRouter();
+const Canvas = dynamic(() => import('@/components/canvas/Canvas'), { ssr: false })
 
-    useEffect(() => {
-        const auth = getAuth(app);
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-            if (user) {
-                // ✅ Authenticated: send user to their default or last canvas
-                // If you plan to store last-opened canvas in Firestore or localStorage, swap "default" for that ID
-                router.replace("/c/default");
-            } else {
-                // 🚪 Unauthenticated: send user to login
-                router.replace("/login");
-            }
-        });
-
-        return () => unsubscribe();
-    }, [router]);
+export default function CanvasPage() {
+    const { canvasId } = useParams<{ canvasId: string }>()
 
     return (
-        <main className="flex min-h-screen items-center justify-center">
-            <h1 className="text-2xl font-semibold text-gray-700 animate-pulse">
-                Loading workspace...
-            </h1>
-        </main>
-    );
+        <AuthGuard>
+            <div data-testid="canvas-shell" className="min-h-screen flex flex-col">
+                <header data-testid="canvas-header" className="flex items-center justify-between border-b px-6 py-3">
+                    <h1 className="text-xl font-semibold">Canvas</h1>
+                    <span className="text-xs text-gray-500">ID: {canvasId}</span>
+                </header>
+                <main data-testid="canvas-main" className="flex-1 bg-white min-h-0">
+                    <div className="h-full" data-testid="canvas-stage-wrapper">
+                        <Canvas />
+                    </div>
+                </main>
+            </div>
+        </AuthGuard>
+    )
 }
