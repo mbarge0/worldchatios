@@ -3,10 +3,21 @@
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import { useFirebaseAuth } from '@/lib/hooks/useFirebaseAuth'
+import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 export default function LoginPage() {
-    const { loading, user, sendMagicLink, completeMagicLink, signInWithEmailPassword, signUpWithEmailPassword, signOut } = useFirebaseAuth()
+    const router = useRouter()
+    const {
+        loading,
+        user,
+        sendMagicLink,
+        completeMagicLink,
+        signInWithEmailPassword,
+        signUpWithEmailPassword,
+        signOut
+    } = useFirebaseAuth()
+
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [mode, setMode] = useState<'magic' | 'password'>('magic')
@@ -14,9 +25,17 @@ export default function LoginPage() {
     const [message, setMessage] = useState<string | null>(null)
     const [error, setError] = useState<string | null>(null)
 
+    // ✅ Complete magic link if redirected back from email
     useEffect(() => {
         completeMagicLink()
     }, [completeMagicLink])
+
+    // ✅ Redirect authenticated users to canvas automatically
+    useEffect(() => {
+        if (!loading && user) {
+            router.replace('/c/default') // Or your actual workspace route
+        }
+    }, [loading, user, router])
 
     const onSendMagic = async () => {
         setSubmitting(true)
@@ -57,8 +76,18 @@ export default function LoginPage() {
                 ) : (
                     <>
                         <div className="flex gap-2">
-                            <Button variant={mode === 'magic' ? 'primary' : 'secondary'} onClick={() => setMode('magic')}>Magic Link</Button>
-                            <Button variant={mode === 'password' ? 'primary' : 'secondary'} onClick={() => setMode('password')}>Email & Password</Button>
+                            <Button
+                                variant={mode === 'magic' ? 'primary' : 'secondary'}
+                                onClick={() => setMode('magic')}
+                            >
+                                Magic Link
+                            </Button>
+                            <Button
+                                variant={mode === 'password' ? 'primary' : 'secondary'}
+                                onClick={() => setMode('password')}
+                            >
+                                Email & Password
+                            </Button>
                         </div>
 
                         <div className="space-y-4">
@@ -89,10 +118,19 @@ export default function LoginPage() {
                                 </Button>
                             ) : (
                                 <div className="flex gap-2">
-                                    <Button onClick={onPasswordSignIn} loading={submitting} disabled={!email || !password}>
+                                    <Button
+                                        onClick={onPasswordSignIn}
+                                        loading={submitting}
+                                        disabled={!email || !password}
+                                    >
                                         Sign In
                                     </Button>
-                                    <Button variant="secondary" onClick={onPasswordSignUp} loading={submitting} disabled={!email || !password}>
+                                    <Button
+                                        variant="secondary"
+                                        onClick={onPasswordSignUp}
+                                        loading={submitting}
+                                        disabled={!email || !password}
+                                    >
                                         Sign Up
                                     </Button>
                                 </div>
@@ -104,5 +142,3 @@ export default function LoginPage() {
         </div>
     )
 }
-
-

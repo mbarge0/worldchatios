@@ -2,11 +2,13 @@
 
 import { getAuthClient } from '@/lib/firebase/client'
 import {
+    browserLocalPersistence,
     createUserWithEmailAndPassword,
     signOut as firebaseSignOut,
     isSignInWithEmailLink,
     onAuthStateChanged,
     sendSignInLinkToEmail,
+    setPersistence,
     signInWithEmailAndPassword,
     signInWithEmailLink,
     type User as FirebaseUser,
@@ -26,11 +28,33 @@ export interface UseFirebaseAuthReturn {
 const MAGIC_EMAIL_KEY = 'cc_magic_email'
 
 export function useFirebaseAuth(): UseFirebaseAuthReturn {
+    // 🧪 DEV OVERRIDE — skip real Firebase login in local builds
+    if (process.env.NODE_ENV === 'development') {
+        return {
+            user: { email: 'dev@local.test' } as any,
+            loading: false,
+            signInWithEmailPassword: async () => ({ error: null }),
+            signUpWithEmailPassword: async () => ({ error: null }),
+            sendMagicLink: async () => ({ error: null }),
+            completeMagicLink: async () => ({ error: null }),
+            signOut: async () => {
+                console.log('🧪 Dev mode: signOut() called (no-op)')
+            },
+        }
+    }
+
     const auth = getAuthClient()
     const [user, setUser] = useState<FirebaseUser | null>(null)
     const [loading, setLoading] = useState(true)
 
-    // Track auth state
+    // ✅ Persist session across reloads (so you stay logged in)
+    useEffect(() => {
+        setPersistence(auth, browserLocalPersistence).catch((e) =>
+            console.error('Failed to set persistence:', e)
+        )
+    }, [auth])
+
+    // --- Track auth state ---
     useEffect(() => {
         const unsub = onAuthStateChanged(auth, (fbUser) => {
             setUser(fbUser)
@@ -106,7 +130,7 @@ export function useFirebaseAuth(): UseFirebaseAuthReturn {
             const href = window.location.href
             if (!isSignInWithEmailLink(auth, href)) return { error: null }
 
-            let email = window.localStorage.getItem(MAGIC_EMAIL_KEY) || ''
+            let email = window.localStorage.getItem(MAGIC_EMAIL_KEY) || auth.currentUser?.email || ''
             if (!email) {
                 email = window.prompt('Please confirm your email to complete sign-in') || ''
             }

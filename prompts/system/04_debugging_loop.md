@@ -27,10 +27,15 @@ Please:
 4. Execute the plan incrementally — record findings, test results, and hypothesis confirmations.  
 5. Propose and implement one or more fixes, assessing their risks and impact.  
 6. Run post-fix validation tests (unit, integration, E2E).
-7. Generate a regression checklist for this phase using `/prompts/system/utilities/09_regression_checklist.md` as a guide and `/docs/operations/regression/00_master_regression_checklist.md` as a data source. Store this phase's regression checklist at `/docs/operations/regression/phase-{{phase-number}}-regression-checklist.md`
-8. Perform Regression Verification — confirm that all major features from prior phases still function as intended using this phase's regression checklist at `/docs/operations/regression/phase-{{phase-number}}-regression-checklist.md`. Record outcomes in Section 8 (Regression Verification).    
-8. Record all test results, file changes, and lessons learned.  
-9. Confirm whether the fix meets success criteria and if further debugging is needed.
+7. Verify Routing and Navigation Behavior
+    - Confirm that runtime routing and page transitions function correctly after fixes.  
+    - Specifically validate post-auth redirects (e.g., login → dashboard/canvas), nested routes, and 404 handling.  
+    - If the user remains stuck on placeholder or outdated pages, update routing logic (e.g., Next.js `app/page.tsx`, route guards, or redirects).  
+    - Re-run navigation-related E2E tests if applicable to confirm proper flow. 
+8. Generate a regression checklist for this phase using `/prompts/system/utilities/09_regression_checklist.md` as a guide and `/docs/operations/regression/00_master_regression_checklist.md` as a data source. Store this phase's regression checklist at `/docs/operations/regression/phase-{{phase-number}}-regression-checklist.md`
+9. Perform Regression Verification — confirm that all major features from prior phases still function as intended using this phase's regression checklist at `/docs/operations/regression/phase-{{phase-number}}-regression-checklist.md`. Record outcomes in Section 8 (Regression Verification).    
+10. Record all test results, file changes, and lessons learned.  
+11. Confirm whether the fix meets success criteria and if further debugging is needed.
 
 ---
 
