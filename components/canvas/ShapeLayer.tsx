@@ -37,7 +37,7 @@ export default function ShapeLayer({ onEditText }: ShapeLayerProps) {
                             y={n.y}
                             width={n.width}
                             height={n.height}
-                            rotation={n.rotation}
+                            rotation={0}
                             text={n.text ?? ''}
                             fontSize={n.fontSize ?? 18}
                             fontFamily={n.fontFamily ?? 'Inter, system-ui, sans-serif'}
@@ -68,7 +68,7 @@ export default function ShapeLayer({ onEditText }: ShapeLayerProps) {
                         y={n.y}
                         width={n.width}
                         height={n.height}
-                        rotation={n.rotation}
+                        rotation={0}
                         cornerRadius={8}
                         fill={n.fill ?? '#E5E7EB'}
                         stroke={isSelected ? '#3B82F6' : n.stroke ?? '#94A3B8'}
