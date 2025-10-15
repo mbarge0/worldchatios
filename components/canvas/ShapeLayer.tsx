@@ -20,10 +20,14 @@ export default function ShapeLayer({ onEditText }: ShapeLayerProps) {
         e.cancelBubble = true
     }
 
+    // 👇 Diagnostic: See if onEditText is live when ShapeLayer first renders
+    //console.log('ShapeLayer render, onEditText:', !!onEditText)
+
     return (
         <>
             {nodes.map((n: any) => {
                 const isSelected = selectedIds.includes(n.id)
+
                 if (n.type === 'text') {
                     return (
                         <Text
@@ -42,11 +46,20 @@ export default function ShapeLayer({ onEditText }: ShapeLayerProps) {
                             lineHeight={n.lineHeight ?? 1.2}
                             fill={n.fill ?? '#111827'}
                             opacity={n.opacity ?? 1}
-                            onClick={(e) => handleClick(e, n.id)}
-                            onDblClick={() => onEditText?.(n.id)}
+                            onClick={(e) => {
+                                console.log('🖱️ Konva text onClick fired for', n.id)
+                                handleClick(e, n.id)
+                            }}
+                            // 👇 Replace your old onDblClick line with this diagnostic
+                            onDblClick={(e) => {
+                                console.log('🔥 Konva double-click event fired for', n.id);
+                                //e.cancelBubble = true;
+                                onEditText?.(n.id);
+                            }}
                         />
                     )
                 }
+
                 return (
                     <Rect
                         key={n.id}
@@ -58,7 +71,7 @@ export default function ShapeLayer({ onEditText }: ShapeLayerProps) {
                         rotation={n.rotation}
                         cornerRadius={8}
                         fill={n.fill ?? '#E5E7EB'}
-                        stroke={isSelected ? '#3B82F6' : (n.stroke ?? '#94A3B8')}
+                        stroke={isSelected ? '#3B82F6' : n.stroke ?? '#94A3B8'}
                         opacity={n.opacity ?? 1}
                         strokeWidth={isSelected ? 2 : 1}
                         shadowColor={'#000000'}
@@ -72,5 +85,3 @@ export default function ShapeLayer({ onEditText }: ShapeLayerProps) {
         </>
     )
 }
-
-

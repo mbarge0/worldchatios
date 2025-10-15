@@ -22,6 +22,10 @@ export default function TextEditModal({ isOpen, initialText, onClose, onSave }: 
         onClose()
     }
 
+    // Diagnostic: log open state and initial text
+    // eslint-disable-next-line no-console
+    //console.log('TextEditModal render isOpen=', isOpen, 'initialText length=', initialText.length)
+
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Edit Text">
             <form onSubmit={handleSubmit} className="space-y-4">

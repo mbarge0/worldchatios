@@ -104,7 +104,7 @@ export default function CanvasPage() {
                     </div>
 
                     <div
-                        className="absolute inset-0 bg-white"
+                        className="absolute inset-0 bg-white z-0"
                         data-testid="canvas-stage-wrapper"
                     >
                         <Canvas />

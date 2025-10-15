@@ -3,7 +3,7 @@
 import { deleteShape } from '@/lib/data/firestore-adapter'
 import { usePresence } from '@/lib/hooks/usePresence'
 import { useCanvasStore } from '@/lib/store/canvas-store'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Layer, Stage } from 'react-konva'
 import CursorLayer from './CursorLayer'
 import SelectionLayer from './SelectionLayer'
@@ -186,7 +186,11 @@ export default function CanvasStage({ width, height, canvasId }: CanvasStageProp
     const isTextNode = (n: any): n is { id: string; type: 'text'; text: string } => !!n && n.type === 'text'
     const activeTextNode = isTextNode(activeNode) ? activeNode : undefined
     const initialText = activeTextNode?.text ?? ''
-    const handleEditText = (id: string) => setEditingTextId(id)
+    const handleEditText = useCallback((id: string) => {
+        // eslint-disable-next-line no-console
+        console.log('CanvasStage.handleEditText called with:', id)
+        setEditingTextId(id)
+    }, [])
     const handleSaveText = async (text: string) => {
         if (!canvasId || !editingTextId) return
         try {
@@ -209,7 +213,7 @@ export default function CanvasStage({ width, height, canvasId }: CanvasStageProp
             tabIndex={0}
             onKeyDown={handleKeyDown}
         >
-            <Stage
+            <Stage id="canvas-stage"
                 data-testid="canvas-stage"
                 width={stageWidth}
                 height={stageHeight}
@@ -222,19 +226,24 @@ export default function CanvasStage({ width, height, canvasId }: CanvasStageProp
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
                 listening={mode !== 'panning'}
-                style={{
+                style={useMemo(() => ({
                     background: '#fafafa',
                     cursor: mode === 'panning' ? 'grabbing' : 'default',
-                }}
+                }), [mode])}
             >
-                <Layer data-testid="canvas-base-layer">
-                    <ShapeLayer onEditText={handleEditText} />
-                    <SelectionLayer />
-                    <TransformHandles />
-                </Layer>
+                {useMemo(() => (
+                    <Layer data-testid="canvas-base-layer">
+                        <ShapeLayer onEditText={handleEditText} />
+                        <SelectionLayer />
+                        <TransformHandles />
+                    </Layer>
+                ), [handleEditText])}
                 <CursorLayer cursors={remoteCursors} />
             </Stage>
 
+            {/* Diagnostic: log modal state */}
+            {/* eslint-disable-next-line no-console */}
+            {(() => { return null })()}
             <TextEditModal
                 isOpen={!!editingTextId}
                 initialText={initialText}
