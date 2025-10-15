@@ -157,8 +157,14 @@ export function useFirebaseAuth(): UseFirebaseAuthReturn {
 
     // --- Sign Out ---
     const signOut = useCallback(async () => {
-        await firebaseSignOut(auth)
-        console.log('User signed out')
+        // Sign out, then immediately update local state so UI can redirect without waiting
+        try {
+            await firebaseSignOut(auth)
+        } finally {
+            setUser(null)
+            setLoading(false)
+            console.log('User signed out (local state cleared)')
+        }
     }, [auth])
 
     return {

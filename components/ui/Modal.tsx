@@ -65,7 +65,7 @@ export default function Modal({
       document.addEventListener('keydown', handleEscape);
       // Prevent body scroll when modal is open
       document.body.style.overflow = 'hidden';
-      
+
       return () => {
         document.removeEventListener('keydown', handleEscape);
         document.body.style.overflow = 'unset';
@@ -87,18 +87,18 @@ export default function Modal({
 
   // Modal content
   const modalContent = (
-    <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
+    <div
+      className="fixed inset-0 z-[99999] pointer-events-auto flex items-center justify-center p-4 animate-in fade-in duration-200"
       onClick={handleBackdropClick}
     >
       {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black bg-opacity-50"
+      <div
+        className="absolute inset-0 bg-black/40"
         aria-hidden="true"
       />
-      
+
       {/* Modal */}
-      <div 
+      <div
         className={`
           relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 
           animate-in zoom-in-95 duration-200
@@ -112,8 +112,8 @@ export default function Modal({
         {(title || showCloseButton) && (
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
             {title && (
-              <h2 
-                id="modal-title" 
+              <h2
+                id="modal-title"
                 className="text-xl font-semibold text-gray-900"
               >
                 {title}
@@ -140,7 +140,7 @@ export default function Modal({
             )}
           </div>
         )}
-        
+
         {/* Body */}
         <div className="px-6 py-4">
           {children}

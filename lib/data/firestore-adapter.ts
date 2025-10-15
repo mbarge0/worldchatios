@@ -57,7 +57,18 @@ export async function createShape(canvasId: string, shape: ShapeDoc): Promise<vo
 }
 
 export async function updateShape(canvasId: string, shapeId: string, updates: Partial<ShapeDoc>): Promise<void> {
-    await updateDoc(shapeDoc(canvasId, shapeId), { ...updates, updatedAt: nowMillis() })
+    const ref = shapeDoc(canvasId, shapeId)
+    try {
+        await updateDoc(ref, { ...updates, updatedAt: nowMillis() })
+    } catch (e: any) {
+        const msg = (e && (e.message || e.code || String(e))) as string
+        // If the document does not exist, create it instead
+        if (typeof msg === 'string' && /not[-_ ]found|no document to update/i.test(msg)) {
+            await setDoc(ref, { id: shapeId, ...(updates as any), updatedAt: nowMillis() } as ShapeDoc, { merge: true })
+        } else {
+            throw e
+        }
+    }
 }
 
 export async function deleteShape(canvasId: string, shapeId: string): Promise<void> {
