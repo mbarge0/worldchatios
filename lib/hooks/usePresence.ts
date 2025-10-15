@@ -44,6 +44,12 @@ export function usePresence(canvasId: string | undefined) {
     const participantsRef = useRef<Record<string, Participant>>({})
     const [version, setVersion] = useState(0)
 
+    // Treat transient permission-denied errors (e.g., during logout) as benign
+    const isTransientPermissionError = (e: any) => {
+        const msg = (e && (e.message || e.code || String(e))) as string
+        return typeof msg === 'string' && /permission[-_ ]denied/i.test(msg)
+    }
+
     useEffect(() => {
         if (!canvasId) return
         const presenceRef = ref(rtdb, `presence/${canvasId}/${uid}`)
@@ -53,19 +59,30 @@ export function usePresence(canvasId: string | undefined) {
             displayName,
             color,
             ts: Date.now(),
-        }).catch(console.error)
+        }).catch((e) => {
+            if (!isTransientPermissionError(e)) console.error(e)
+        })
         // ensure cleanup
         onDisconnect(presenceRef)
             .remove()
-            .catch(console.error)
+            .catch((e) => {
+                if (!isTransientPermissionError(e)) console.error(e)
+            })
 
         // heartbeat to keep presence fresh
         const heartbeat = setInterval(() => {
-            update(presenceRef, { ts: Date.now(), online: true }).catch(() => { })
+            update(presenceRef, { ts: Date.now(), online: true }).catch((e) => {
+                if (!isTransientPermissionError(e)) {
+                    // swallow transient permission errors, log others
+                    console.error(e)
+                }
+            })
         }, 15000)
         return () => {
             // best-effort offline (onDisconnect will handle abrupt closes)
-            set(presenceRef, { online: false, displayName, color, ts: Date.now() }).catch(() => { })
+            set(presenceRef, { online: false, displayName, color, ts: Date.now() }).catch((e) => {
+                if (!isTransientPermissionError(e)) console.error(e)
+            })
             clearInterval(heartbeat)
         }
     }, [canvasId, uid, displayName, color])
@@ -149,7 +166,9 @@ export function usePresence(canvasId: string | undefined) {
         lastSentRef.current = now
         if (!canvasId) return
         const cursorRef = ref(rtdb, `presence/${canvasId}/${uid}`)
-        update(cursorRef, { cursor: { x, y, ts: now } }).catch(console.error)
+        update(cursorRef, { cursor: { x, y, ts: now } }).catch((e) => {
+            if (!isTransientPermissionError(e)) console.error(e)
+        })
     }
 
     return useMemo(() => ({ cursorsRef, participantsRef, sendCursor, color, version }), [cursorsRef, participantsRef, sendCursor, color, version])

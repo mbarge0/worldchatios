@@ -15,7 +15,7 @@ export default function CanvasPage() {
     const { canvasId } = useParams<{ canvasId: string }>()
     const { participantsRef, version } = usePresence(canvasId)
 
-    const participants = Object.values(participantsRef.current || {}).sort((a, b) => a.displayName.localeCompare(b.displayName))
+    const participants = Object.values(participantsRef.current || {}).sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''))
     const presenceUsers = participants.map((p) => ({
         userId: p.userId,
         displayName: p.displayName,
