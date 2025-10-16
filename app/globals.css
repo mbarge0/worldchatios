@@ -3,6 +3,11 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* Brand palette */
+  --brand-dark: #072d51;
+  --brand-gold: #cfa968;
+  --brand-white: #ffffff;
+  --brand-light: #cdd2c5;
 }
 
 

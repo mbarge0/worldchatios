@@ -50,6 +50,7 @@ References:
    - Added collapsible right-side chat drawer on `/c/[canvasId]` with sticky input and resizable panel.
    - Rendered assistant responses with distinct avatar/bubble; surfaced tool actions and errors inline.
    - Implemented "Undo last AI action" using tool history replay.
+   - Added toolbar chat toggle button to open/close the drawer.
 
 4. B4 Voice Input & Output
    - Integrated Web Speech API for microphone input → populates chat input; capability checks and fallbacks.
@@ -119,10 +120,16 @@ References:
 1. Run unit tests for tools, orchestration, voice.
 2. Run integration tests: chat ↔ API ↔ tools; Firestore session restore.
 3. Run E2E: draw via chat; reload persistence; voice I/O in Chrome/Edge.
-4. Generate phase regression checklist (based on Master Regression Manifest) and execute smoke + comprehensive checks for prior modules (#1–#12).
+4. Generate phase regression checklist (based on Master Regression Manifest) and execute smoke + comprehensive checks for prior modules (#1–#12). See `/docs/operations/regression/phase-XX-regression-checklist.md`.
 
 ### Execution Log
-- Unit/Integration/E2E executed locally — pending CI confirmation.
+- Local Smoke (per regression checklist):
+  - ✅ Login → canvas route reachable; no console errors
+  - ✅ Presence visible; shapes create/move/resize/rotate functional
+  - ✅ Chat drawer toggle works; AI responds and triggers tool actions
+  - ✅ Voice input populates message; speech synthesis audible in Chrome
+  - ✅ Session restores recent AI messages on reload
+- Unit/Integration/E2E executed locally — CI confirmation pending.
 
 ### Fix Implementation
 - To be filled if issues discovered.
@@ -132,7 +139,8 @@ References:
 
 ### Regression Verification
 - Prior modules potentially affected: #2 Auth, #4 Canvas, #5 Persistence, #6 Realtime, #7 Conflict, #9 Rules, #10 Observability, #12 QA.
-- Smoke: login → canvas → create/transform; presence visible; export JSON; no console errors.
+- Checklist: see `/docs/operations/regression/phase-XX-regression-checklist.md`.
+- Smoke: login → canvas → create/transform; presence visible; export JSON; no console errors — ✅ local.
 
 ### Outcome Summary
 - Ready to proceed pending any fixes from validation.

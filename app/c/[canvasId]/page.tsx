@@ -1,5 +1,6 @@
 'use client'
 
+import ChatDrawer from '@/components/chat/ChatDrawer'
 import AuthGuard from '@/components/layout/AuthGuard'
 import AuthHeader from '@/components/layout/AuthHeader'
 import PresenceBar from '@/components/layout/PresenceBar'
@@ -19,6 +20,7 @@ export default function CanvasPage() {
     const { participantsRef, version } = usePresence(canvasId)
     const { selectedIds, nodes, removeSelectedNodes, setNodes } = useCanvasStore()
     const [showGrid, setShowGrid] = useState<boolean>(false)
+    const [chatOpen, setChatOpen] = useState<boolean>(false)
 
     const participants = Object.values(participantsRef.current || {}).sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''))
     const presenceUsers = participants.map((p) => ({
@@ -209,6 +211,7 @@ export default function CanvasPage() {
                     {/* Bottom docked toolbar */}
                     <div className="absolute left-0 right-0 bottom-6 z-10 flex items-center justify-center">
                         <Toolbar
+                            onToggleChat={() => setChatOpen((v: boolean) => !v)}
                             onAddRect={handleAddRect}
                             onAddText={handleAddText}
                             onDuplicate={handleDuplicate}
@@ -224,10 +227,7 @@ export default function CanvasPage() {
                         />
                     </div>
 
-                    <div
-                        className="absolute inset-0 bg-white z-0"
-                        data-testid="canvas-stage-wrapper"
-                    >
+                    <div className="absolute inset-0 bg-white z-0" data-testid="canvas-stage-wrapper">
                         {showGrid && (
                             <div aria-hidden className="pointer-events-none absolute inset-0"
                                 style={{ backgroundImage: `linear-gradient(to right, rgba(229,231,235,0.6) 1px, transparent 1px), linear-gradient(to bottom, rgba(229,231,235,0.6) 1px, transparent 1px)`, backgroundSize: '8px 8px' }}
@@ -235,6 +235,8 @@ export default function CanvasPage() {
                         )}
                         <Canvas stageRef={stageRef} />
                     </div>
+                    {/* Chat Drawer mount */}
+                    <ChatDrawer canvasId={String(canvasId)} open={chatOpen} onClose={() => setChatOpen(false)} />
                 </main>
             </div>
         </AuthGuard>
