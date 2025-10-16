@@ -12,6 +12,11 @@ export type CanvasStoreState = {
     selectedIds: string[]
     mode: InteractionMode
     nodes: CanvasNode[]
+    transformSession?: {
+        shapeId: string | null
+        startedAt: number | null
+        lastUpdatedAt: number | null
+    }
 }
 
 export type CanvasStoreActions = {
@@ -28,6 +33,9 @@ export type CanvasStoreActions = {
     updateSelectedNodes: (updater: (node: CanvasNode) => CanvasNode) => void
     removeSelectedNodes: () => void
     nudgeSelected: (dx: number, dy: number) => void
+    startTransformSession: (shapeId: string) => void
+    updateTransformSession: () => void
+    endTransformSession: () => void
 }
 
 export type CanvasStore = CanvasStoreState & CanvasStoreActions
@@ -43,6 +51,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
         { id: 'n1', type: 'rect', x: 100, y: 100, width: 160, height: 100, rotation: 0 },
         { id: 'n2', type: 'rect', x: 340, y: 160, width: 140, height: 140, rotation: 0 },
     ],
+    transformSession: { shapeId: null, startedAt: null, lastUpdatedAt: null },
 
     setScale: (scale) =>
         set((state) => ({ viewport: { ...state.viewport, scale } })),
@@ -65,6 +74,9 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
         set((state) => ({
             nodes: state.nodes.map((n) => (state.selectedIds.includes(n.id) ? { ...n, x: n.x + dx, y: n.y + dy } : n)),
         })),
+    startTransformSession: (shapeId) => set(() => ({ transformSession: { shapeId, startedAt: Date.now(), lastUpdatedAt: Date.now() } })),
+    updateTransformSession: () => set((state) => ({ transformSession: { ...(state.transformSession || { shapeId: null, startedAt: null, lastUpdatedAt: null }), lastUpdatedAt: Date.now() } })),
+    endTransformSession: () => set(() => ({ transformSession: { shapeId: null, startedAt: null, lastUpdatedAt: null } })),
 }))
 
 export type CanvasNodeBase = {

@@ -22,6 +22,10 @@ export default function SelectionLayer() {
         const pointer = stage?.getPointerPosition()
         if (!pointer) return
         const start = toWorld(pointer)
+        // Clicking empty canvas clears selection unless Shift is held
+        if (!e.target || e.target === stage) {
+            if (!e.evt.shiftKey) setSelection([])
+        }
         dragRef.current = start
         setMode('marquee')
         setMarquee({ x: start.x, y: start.y, w: 0, h: 0 })

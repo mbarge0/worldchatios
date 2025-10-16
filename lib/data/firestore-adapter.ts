@@ -25,6 +25,12 @@ function shapesCol(canvasId: string) {
 function shapeDoc(canvasId: string, shapeId: string) {
     return doc(db, 'canvases', canvasId, 'shapes', shapeId)
 }
+function versionsCol(canvasId: string) {
+    return collection(db, 'canvases', canvasId, 'versions')
+}
+function versionDoc(canvasId: string, versionId: string) {
+    return doc(db, 'canvases', canvasId, 'versions', versionId)
+}
 
 // Canvas CRUD
 export async function createCanvas(partial: Partial<CanvasDoc>): Promise<string> {
@@ -104,4 +110,35 @@ export async function refreshShapeLock(canvasId: string, shapeId: string, userId
 
 export async function clearShapeLock(canvasId: string, shapeId: string): Promise<void> {
     await updateDoc(shapeDoc(canvasId, shapeId), { lockedBy: deleteField(), updatedAt: nowMillis() })
+}
+
+// --- Version Snapshots ---
+export async function saveVersionSnapshot(canvasId: string, payload: { shapes: any[]; meta?: any }): Promise<string> {
+    const ref = await addDoc(versionsCol(canvasId), { createdAt: nowMillis(), ...payload })
+    // Retention: keep last 20
+    const vs = await getDocs(query(versionsCol(canvasId), orderBy('createdAt', 'desc')) as any)
+    const toDelete = vs.docs.slice(20)
+    await Promise.all(toDelete.map((d) => deleteDoc(d.ref)))
+    return ref.id
+}
+
+export async function listVersionSnapshots(canvasId: string): Promise<Array<{ id: string; createdAt: number }>> {
+    const snap = await getDocs(query(versionsCol(canvasId), orderBy('createdAt', 'desc')) as any)
+    return snap.docs.map((d) => ({ id: d.id, createdAt: (d.data() as any).createdAt }))
+}
+
+export async function restoreVersionSnapshot(canvasId: string, versionId: string): Promise<void> {
+    const vs = await getDoc(versionDoc(canvasId, versionId))
+    if (!vs.exists()) return
+    const data = vs.data() as any
+    const shapes: any[] = data.shapes || []
+    // Save current state as a new snapshot (safety)
+    try {
+        const current = await listShapes(canvasId)
+        await saveVersionSnapshot(canvasId, { shapes: current })
+    } catch { }
+    // Replace shapes
+    const current = await listShapes(canvasId)
+    await Promise.all(current.map((s) => deleteDoc(shapeDoc(canvasId, s.id))))
+    await Promise.all(shapes.map((s) => setDoc(shapeDoc(canvasId, s.id), { ...s, updatedAt: nowMillis() })))
 }

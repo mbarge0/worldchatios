@@ -15,9 +15,10 @@ type CanvasStageProps = {
     width?: number
     height?: number
     canvasId?: string
+    stageRef?: any
 }
 
-export default function CanvasStage({ width, height, canvasId }: CanvasStageProps) {
+export default function CanvasStage({ width, height, canvasId, stageRef }: CanvasStageProps) {
     const containerRef = useRef<HTMLDivElement | null>(null)
     const [containerSize, setContainerSize] = useState<{ width: number; height: number }>({
         width: width ?? 0,
@@ -70,7 +71,9 @@ export default function CanvasStage({ width, height, canvasId }: CanvasStageProp
         const baseStep = ev.shiftKey ? 10 : 1
         const step = baseStep / Math.max(0.0001, viewport.scale)
 
-        if (ev.key === 'ArrowLeft') {
+        if (ev.key === 'g' || ev.key === 'G') {
+            // grid toggle will be handled by page toolbar; no-op placeholder for future state
+        } else if (ev.key === 'ArrowLeft') {
             nudgeSelected(-step, 0)
             ev.preventDefault()
         } else if (ev.key === 'ArrowRight') {
@@ -213,7 +216,7 @@ export default function CanvasStage({ width, height, canvasId }: CanvasStageProp
             tabIndex={0}
             onKeyDown={handleKeyDown}
         >
-            <Stage id="canvas-stage"
+            <Stage id="canvas-stage" ref={stageRef}
                 data-testid="canvas-stage"
                 width={stageWidth}
                 height={stageHeight}

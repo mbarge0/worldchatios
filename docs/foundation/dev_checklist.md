@@ -189,6 +189,153 @@ Acceptance: all pass reliably; flakiness addressed.
 
 ---
 
+## Supermodule — Pre-AI Reliability, Persistence, Auth & Advanced Features (Modules A1–A5)
+
+Purpose: Harden multiplayer correctness, persistence, and UX prior to the AI phase; add low-risk advanced features from the rubric; and abstract canvas actions to callable functions for the upcoming agent.
+
+Contained Modules:
+- A1) Conflict Resolution 2.0
+- A2) Persistence & Reconnection
+- A3) Authentication & Canvas UI Polish
+- A4) Advanced Features Suite
+- A5) AI-Ready Shape Action Abstractions
+
+References:
+- Requirements: `/docs/requirements/requirements2.md` (Sections 1 & 3)
+- Architecture/PRD: `/docs/foundation/architecture.md`, `/docs/foundation/prd.md`
+- Handoff: `/docs/operations/phases/sm-d2-04-debug.md`
+
+---
+
+## Module A1: Conflict Resolution 2.0
+
+- [ ] [Build] Shape transform sessions with explicit lifecycle (`start`, `update`, `end`) in store
+  - Acceptance: session created on mousedown; cleared on mouseup/cancel; state consistent when multiple rapid updates occur.
+  - Dependencies: Canvas Engine & UI; Data Model & Persistence.
+  - Testing: unit tests for session reducer; integration drag/resize storm.
+- [ ] [Build] Ephemeral `lockedBy` with TTL + visual indicator
+  - Acceptance: when a user is transforming, `lockedBy` is set (5s TTL) and other clients see subtle lock UI (handle tint + tooltip "Editing: <name>").
+  - Testing: e2e two-users contention; verify lock clears on end/timeout.
+- [ ] [Build] Write arbitration: last-write-wins using `serverTimestamp` and `actorId`
+  - Acceptance: simultaneous updates converge; no duplicates/ghost nodes after thrash.
+  - Testing: e2e Simultaneous Move and Rapid Edit Storm scenarios (see requirements2.md).
+- [ ] [Build] Safe-cancel on delete vs edit
+  - Acceptance: deleting a locked/being-edited object cancels remote session; other client’s UI reverts without error.
+  - Testing: e2e Delete vs Edit.
+- [ ] [Validate] Metrics log for contention events (Sentry breadcrumb)
+  - Acceptance: when arbitration triggers, a breadcrumb with shapeId/actorIds recorded (no PII).
+  - Testing: manual verify breadcrumb appears.
+
+---
+
+## Module A2: Persistence & Reconnection
+
+- [ ] [Build] Mid-edit refresh rollback to last committed state
+  - Acceptance: if page unloads during transform, object restores to its pre-drag state on reload; no partial positions saved.
+  - Dependencies: Module A1 sessions; existing debounced writes.
+  - Testing: e2e Mid-Operation Refresh scenario.
+- [ ] [Build] `beforeunload` cleanup for `lockedBy` and transient UI state
+  - Acceptance: refresh/close clears local lock and session; no stale locks when returning.
+  - Testing: integration with simulated unload.
+- [ ] [Build] Connection status indicator (connected/reconnecting/offline)
+  - Acceptance: small status chip visible; states reflect emulator network toggles.
+  - Testing: e2e Network Simulation (0 kbps for 30s) then recover.
+- [ ] [Build] Local operation queue for short disconnects (UI-only, idempotent on commit)
+  - Acceptance: up to 10 buffered ops replay on reconnect; state converges; duplicates avoided via op ids.
+  - Testing: integration with throttled network; assertions on final state.
+
+---
+
+## Module A3: Authentication & Canvas UI Polish
+
+- [ ] [Plan] Update wireframe to two-column login with hero image and accessible form
+  - Acceptance: design aligns with screenshot reference; states defined for error/loading.
+  - Testing: design review checklist.
+- [ ] [Build] Implement revamped `/login` with Email/Password + Magic Link toggle
+  - Acceptance: responsive layout; keyboard/focus styles; remember-me checkbox (local state only); error toasts via `components/ui/Toast`.
+  - Dependencies: Authentication module; UI components.
+  - Testing: e2e login flows for both methods; a11y checks (axe) pass.
+- [ ] [Validate] Security pass
+  - Acceptance: no credentials logged; rate-limit auth attempts (client debounce + Firebase defaults); Sentry excludes auth payloads.
+  - Testing: unit on input sanitization; manual inspection.
+- [ ] [Build] Bottom-docked toolbar with primary actions (select, rect, text, duplicate, delete, align menu, z-index menu, export)
+  - Acceptance: toolbar visible on canvas route; icons labeled with tooltips; keyboard hints shown.
+  - Testing: integration render + click handlers; snapshot.
+- [ ] [Build] Page frame visuals (light background, blue page outline) per reference
+  - Acceptance: canvas shows subtle page boundary; no perf regressions.
+  - Testing: visual assertion in e2e screenshot.
+- [ ] [Validate] Accessibility sweep of login and toolbar
+  - Acceptance: all controls reachable via keyboard; ARIA labels present; focus rings visible.
+  - Testing: manual + axe checks.
+
+---
+
+## Module A4: Advanced Features Suite
+
+- [ ] [Build] Centralized keymap with scope (stage vs input) and conflict-safe handlers
+  - Acceptance: Delete removes selection; Cmd/Ctrl+D duplicates; Arrow keys nudge (1px) with Shift for 10px.
+  - Testing: unit for keymap; e2e keyboard interactions.
+- [ ] [Build] Export whole canvas to PNG via `Stage.toDataURL()` with scale selector
+  - Acceptance: downloads PNG; result dimensions match selected scale; background color preserved.
+  - Testing: integration mocks `toDataURL`; e2e button click downloads.
+- [ ] [Build] Export selection to PNG (bounds crop)
+  - Acceptance: when shapes selected, export uses tight bounding box.
+  - Testing: integration compute-bounds unit; e2e happy path.
+- [ ] [Build] Basic SVG export for supported shapes (rect, circle, text)
+  - Acceptance: generates minimal SVG markup; opens correctly in browsers.
+  - Testing: unit snapshot of SVG string for sample scene.
+- [ ] [Build] Toggleable grid (8px default) with lightweight rendering
+  - Acceptance: grid overlay toggles from toolbar; persists per-canvas in local storage.
+  - Testing: unit for preference; manual perf check.
+- [ ] [Build] Snap on move/resize to nearest grid lines with magnet radius
+  - Acceptance: objects snap within 6px; hold Alt/Option to temporarily disable.
+  - Testing: unit math functions; e2e drag behaviour.
+- [ ] [Build] Simple smart guides (center/edge alignment between selected items)
+  - Acceptance: guide lines appear when centers/edges align; disappear on release.
+  - Testing: integration with 2+ shapes.
+- [ ] [Build] Align Left/Right/Top/Bottom/Center (horizontal/vertical) for multi-selection
+  - Acceptance: positions calculated using selection bounds; maintains zIndex order.
+  - Testing: unit math for alignment; e2e with 3 rectangles.
+- [ ] [Build] Distribute Horizontally/Vertically
+  - Acceptance: even spacing between outermost items.
+  - Testing: unit for distribution gaps; e2e verify pixels.
+- [ ] [Build] Bring to Front / Send to Back / Step Forward / Step Backward
+  - Acceptance: updates `zIndex` and persists; rendering order matches expectation.
+  - Testing: unit reorder helper; e2e via toolbar actions.
+- [ ] [Validate] Rules for unique `zIndex`
+  - Acceptance: no duplicate zIndex after operations; normalization utility corrects sequence.
+  - Testing: unit normalization.
+- [ ] [Build] Snapshot subcollection `versions/{versionId}` on demand
+  - Acceptance: snapshot stores canvas meta + shapes array with author and timestamp.
+  - Dependencies: Data Model & Persistence.
+  - Testing: unit serialize/deserialize; emulator write/read.
+- [ ] [Build] Restore snapshot (non-destructive) as a new snapshot with pointer
+  - Acceptance: restore applies to current canvas and records prior state as another snapshot.
+  - Testing: e2e create → modify → restore flow.
+- [ ] [Validate] Basic retention policy
+  - Acceptance: keep last 20 snapshots per canvas; older pruned client-side.
+  - Testing: unit prune utility.
+
+Unified Dependencies: Canvas Engine & UI, Selection, Toolbar; Data Model & Persistence for versioning; download permissions for export.
+
+Unified Acceptance & QA: All features are accessible via toolbar/shortcuts; Playwright verifies keyboard actions, snapping/guides, alignment, z-index, and PNG/SVG downloads with pixel/DOM assertions; unit coverage for math/utilities ≥80% for this module.
+
+---
+
+## Module A5: AI-Ready Shape Action Abstractions
+
+- [ ] [Build] Extract idempotent action helpers in `lib/ai/actions.ts`
+  - Acceptance: exported functions: `createShape`, `createText`, `moveShape`, `resizeShape`, `rotateShape`, `alignShapes`, `zIndexUpdate`, `exportCanvas`, `exportSelection` with explicit types and return values.
+  - Dependencies: Canvas store and Firestore adapter.
+  - Testing: unit tests per action with mocked adapters; type tests compile.
+- [ ] [Build] Single source of truth: UI uses helpers (no duplicate logic)
+  - Acceptance: canvas toolbar and keyboard handlers call the same helpers used by AI later.
+  - Testing: integration: spy that helper invoked from UI.
+
+---
+
+
+
 ## Module #13: AI Agent & Tools (Final)
 
 - [ ] Tool schema: `createShape`, `moveShape`, `resizeShape`, `rotateShape`, `createText`, `getCanvasState`
