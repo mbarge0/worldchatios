@@ -1,4 +1,4 @@
-import { createShape as fsCreateShape, updateShape as fsUpdateShape } from '@/lib/data/firestore-adapter'
+import { createShape as fsCreateShape, updateShape as fsUpdateShape, listShapes } from '@/lib/data/firestore-adapter'
 import type { CanvasNode } from '@/lib/store/canvas-store'
 
 // Basic types
@@ -124,6 +124,12 @@ export async function persistZIndexNormalization(canvasId: string, nodes: Canvas
     for (const n of normalized as any[]) {
         await fsUpdateShape(canvasId, n.id, { zIndex: n.zIndex } as any)
     }
+}
+
+// Introspection helpers for the AI agent
+export async function getCanvasState(canvasId: string): Promise<any[]> {
+    // Returns current shapes for the given canvas
+    return await listShapes(canvasId)
 }
 
 
