@@ -220,4 +220,9 @@ export async function POST(req: NextRequest) {
     }
 }
 
-
+export async function GET() {
+    return NextResponse.json({
+        status: 'ok',
+        message: 'OpenAI proxy route reachable',
+    })
+}
