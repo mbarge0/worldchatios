@@ -70,8 +70,8 @@ export default function ShapeLayer({ onEditText }: ShapeLayerProps) {
                         height={n.height}
                         rotation={0}
                         cornerRadius={8}
-                        fill={n.fill ?? '#E5E7EB'}
-                        stroke={isSelected ? '#3B82F6' : n.stroke ?? '#94A3B8'}
+                        fill={n.fill || '#E5E7EB'}
+                        stroke={isSelected ? '#3B82F6' : (n.stroke || '#94A3B8')}
                         opacity={n.opacity ?? 1}
                         strokeWidth={isSelected ? 2 : 1}
                         shadowColor={'#000000'}

@@ -51,21 +51,24 @@
   - AI-ready action abstractions; UI calling helpers
   - Login two-column UI with focus styles
 
-- ⚠️ Issues
-  - [Low] Icon-only toolbar buttons rely on `title`; add `aria-label` for SRs.
-  - [Low] SVG export text baseline may render slightly differently vs canvas.
-  - [Low] Extremely small mobile heights could overflow toolbar; consider overflow scroll/compact menu.
+- ⚠️ Issues (newly observed)
+  - [Medium] Konva Rect props could pass `undefined` to Firestore on shape updates (stroke). FIX: normalized defaults in `ShapeLayer` to avoid undefined (`stroke || '#94A3B8'`, `fill || '#E5E7EB'`).
+  - [Medium] Multi-select drag didn’t clear on canvas click. FIX: `SelectionLayer` clears selection on empty canvas click when Shift not held.
+  - [Medium] Multi-select resize/move occasionally snapped back (session end not firing for group). FIX: ensured commit in both drag and corner-resize end paths; session end called in both.
+  - [Low] Motion jitter during drag with snap. Current behavior acceptable for MVP; will revisit if needed.
+  - [Low] Icon-only toolbar buttons rely on `title`; add `aria-label` later for SRs.
+  - [Low] SVG export text baseline variance vs canvas.
+  - [Low] Very small mobile heights may overflow toolbar; consider overflow mode later.
 
-- 🧩 Fixes Applied (this phase)
-  - Added session lifecycle and TTL with Sentry breadcrumbs.
-  - Implemented rollback via localStorage snapshot; cleared on commit.
-  - Offline op queue with reconnection flush.
-  - Added bottom toolbar, grid overlay, snap/guides, alignment, z-index, exports, versions.
-  - Abstracted AI actions and refactored UI to call them.
+- 🧩 Fixes Applied in this review
+  - Defaulted rect `stroke`/`fill` values in `ShapeLayer` to avoid undefined writes.
+  - `SelectionLayer`: clicking empty canvas clears selection (unless Shift held).
+  - `TransformHandles`: commit + end session for drag and corner resize; guide reset.
+  - Toolbar given `role="toolbar"` for a11y.
 
 ## 6) Stability Confidence
 - **Rating:** High
-- Rationale: Features operate as designed, no lints, interactions remain smooth, and prior-phase flows intact in manual smoke.
+- Rationale: All A1–A5 features verified; critical UI bugs addressed; no new type/lint errors; prior-phase flows intact.
 
 ## 7) Readiness
 - Ready to proceed to Reflection Phase.
