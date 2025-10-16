@@ -65,18 +65,23 @@ export default function LoginPage() {
 
     return (
         <div className="min-h-screen grid md:grid-cols-2 bg-slate-50">
-            {/* Hero side */}
-            <div className="hidden md:block relative">
-                <div className="absolute inset-0" style={{
-                    backgroundImage: 'url(/window.svg)',
-                    backgroundRepeat: 'no-repeat',
-                    backgroundPosition: 'center',
-                    backgroundSize: '60%'
-                }} />
-                <div className="absolute inset-0 bg-gradient-to-tr from-black/20 to-transparent" />
-                <div className="absolute left-10 bottom-10 text-white max-w-sm">
+            {/* Hero side (customized with brand colors and hero image) */}
+            <div className="hidden md:flex relative items-center justify-center bg-[#072d51]">
+                <div className="absolute inset-0">
+                    <img
+                        src="/images/login-hero.png"
+                        alt="CollabCanvas — Gauntlet AI Week One — Matt Barge"
+                        className="object-contain w-full h-full opacity-95"
+                    />
+                </div>
+
+                <div className="absolute inset-0 bg-gradient-to-t from-[#072d51]/80 via-[#072d51]/50 to-transparent" />
+
+                <div className="absolute left-10 bottom-10 text-[#cfa968] max-w-sm">
                     <h1 className="text-4xl font-bold leading-tight">Welcome Back</h1>
-                    <p className="mt-2 text-sm opacity-90">Design collaboratively with low-latency realtime editing.</p>
+                    <p className="mt-2 text-sm text-[#cdd2c5] opacity-90">
+                        Design collaboratively with low-latency realtime editing.
+                    </p>
                 </div>
             </div>
 
