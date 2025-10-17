@@ -19,7 +19,7 @@ Validate that all checklist items from the dev checklist are satisfied and tests
 Run unit, integration, and end-to-end checks to confirm feature completeness.  
 Generate a regression checklist referencing prior modules and ensure legacy features remain stable.
 
-Store the resulting report under `/docs/operations/phases/phase-XX-02-build.md`
+Store the resulting report under `/docs/operations/phases/phase-XX-02-build.md`. Always store the plan report under a numbered phase file. If the current supermodule or module does not have a number, assign it the next available phase number from the development checklist.
 
 **System Template references:**  
 - Build Loop Template: `/prompts/system/03_building_loop.md`  
@@ -27,5 +27,6 @@ Store the resulting report under `/docs/operations/phases/phase-XX-02-build.md`
 - Debugging Loop Template: `/prompts/system/04_debugging_loop.md`  
 
 **Supporting documentation:**   
+- Dev Checklist: `/docs/foundation/dev_checklist.md`  
 - UI Guidelines: `/docs/operations/ui-guidelines.md`  
 - Regression manifest: `/docs/operations/regression/00_master_regression_manifest.md`
