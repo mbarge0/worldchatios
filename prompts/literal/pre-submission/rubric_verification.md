@@ -1,18 +1,18 @@
-**When to use**: After completing a full module or project to validate rubric alignment, ensure submission readiness, and confirm quality standards are met before final delivery or approval.  
-**When not to use**: During active build or debugging work — use “Build” or “Debugging Loop” instead.
+**When to use:** After the application is feature-complete or deployed, to perform a **comprehensive rubric verification**. This step compares the **running app** (local or deployed) directly against the **project rubric** to confirm functionality, performance, persistence, accessibility, scalability, and deliverables.
+**When not to use:** During active build or debug phases — this is for **final QA, pre-submission, or scoring simulation**.
 
-Let’s perform a **Final Rubric Verification Review** using the Rubric Verification Loop Template.  
-Validate the deployed or local build against the project rubric and deliverable requirements.  
-Check functionality, performance, persistence, scalability, and UX consistency.  
-Ensure that all submission artifacts — including the development log, demo video, and README — meet rubric expectations.  
+Let’s perform a **Comprehensive Rubric Verification Review with Scoring** using the **Unified Rubric QA Loop Template**. Compare the current deployed or local build against the project requirements. Generate a structured verification report that includes:  
+1. Rubric-based category validation (Functionality, Performance, Persistence, etc.)  
+2. Automated checks using code and endpoint context  
+3. Manual/visual evidence integration (screenshots, logs, or notes)
+4. Assign points automatically based on project requirements compliance
+5. Output a structured rubric verification report with scores and evidence.  
+6. Include a final numeric total (e.g., **Score: 94 / 100 pts (94%)**) and readiness verdict.   
+7. Overall submission readiness score and recommendations
 
-Generate a structured rubric verification checklist for this phase and confirm pass/fail status for each rubric category.  
-Document test evidence (screenshots, logs, or notes) for each section.  
-Summarize the verification results clearly — list ✅ fully compliant areas, ⚠️ partial or needs review items, and ❌ failing or missing requirements.  
-Conclude with an overall submission readiness status (Ready / Needs Review / Blocked) and provide recommendations for any last-minute fixes or polish items before submission.  
-Store the resulting rubric verification report under:  
-`/docs/operations/phases/phase-XX-05-verification.md`
+Save the result to: /docs/operations/verification/verification.md. If there is already a verification file, create a new file and title it the next available verification number ie /verification2.md
 
-**Rubric Verification Loop Template reference**: `/prompts/system/14_rubric_verification_loop.md`
+### **Template Reference**
+`/prompts/system/14_unified_rubric_verification_loop.md`
 
-The requirements for this project are located at `/docs/requirements/requirements.md`
+Project requirements located at: `/docs/requirements/requirements2.md`

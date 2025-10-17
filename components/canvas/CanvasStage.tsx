@@ -37,7 +37,7 @@ export default function CanvasStage({ width, height, canvasId, stageRef }: Canva
         selectedIds,
     } = useCanvasStore()
 
-    const { cursorsRef, sendCursor } = usePresence(canvasId)
+    const { cursorsRef, sendCursor, version } = usePresence(canvasId)
 
     // --- 1. Measure container size ---
     useEffect(() => {
@@ -172,15 +172,11 @@ export default function CanvasStage({ width, height, canvasId, stageRef }: Canva
     const stageWidth = containerSize.width || window.innerWidth
     const stageHeight = containerSize.height || window.innerHeight
 
-    // --- 6. Remote cursors ---
+    // --- 6. Remote cursors (event-driven; no polling) ---
     const [remoteCursors, setRemoteCursors] = useState<any[]>([])
     useEffect(() => {
-        const updateCursors = () => {
-            setRemoteCursors(Object.values(cursorsRef.current))
-        }
-        const interval = setInterval(updateCursors, 100)
-        return () => clearInterval(interval)
-    }, [cursorsRef])
+        setRemoteCursors(Object.values(cursorsRef.current))
+    }, [version, cursorsRef])
 
     // --- 7. Inline Text Editing ---
     const [editingTextId, setEditingTextId] = useState<string | null>(null)
