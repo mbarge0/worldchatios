@@ -173,7 +173,7 @@ export async function POST(req: NextRequest) {
             temperature: 0.2,
         })
 
-        const message = completion.choices[0]?.message
+        const message = completion.choices?.[0]?.message
         const toolCalls = (message?.tool_calls || []) as any[]
         const results: Array<{ call: ToolCall; result: unknown }> = []
 
@@ -208,7 +208,25 @@ export async function POST(req: NextRequest) {
             })
         }
 
-        const text = message?.content || ''
+        let text = (message?.content || '').trim()
+        if (!text) {
+            // eslint-disable-next-line no-console
+            console.warn('⚠️ No assistant text returned by model; deriving summary from tool calls')
+            if (results.length > 0) {
+                const verbs: Record<string, string> = {
+                    createShape: 'created a shape',
+                    createText: 'created a text node',
+                    moveShape: 'moved a shape',
+                    resizeShape: 'resized a shape',
+                    rotateShape: 'rotated a shape',
+                    alignShapes: 'aligned shapes',
+                    zIndexUpdate: 'updated z-index',
+                    getCanvasState: 'retrieved canvas state',
+                }
+                const actions = Array.from(new Set(results.map(r => verbs[r.call.name] || r.call.name)))
+                text = actions.length ? `I've ${actions.join(', ')}.` : ''
+            }
+        }
         // eslint-disable-next-line no-console
         console.log(`\u{1F4AC} AI replied: ${text}`)
         return NextResponse.json({

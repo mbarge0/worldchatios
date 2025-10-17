@@ -82,8 +82,13 @@ export default function ChatDrawer({ canvasId, open, onClose }: ChatDrawerProps)
             })
             const data = await res.json()
             if (!res.ok) throw new Error(data?.error || 'AI error')
-            const text = data?.message || '(no response)'
-            setMessages((prev) => [...prev, { role: 'assistant' as const, content: text }])
+            const text: string = typeof data?.message === 'string' ? data.message : ''
+            if (text && text.trim().length > 0) {
+                setMessages((prev) => [...prev, { role: 'assistant' as const, content: text }])
+            } else {
+                // eslint-disable-next-line no-console
+                console.warn('⚠️ No assistant message received')
+            }
             const calls = Array.isArray(data?.toolCalls) ? data.toolCalls as Array<{ call: ToolCallRecord }> : []
             setLastToolCalls(calls.map((c) => c.call))
             // Execute tool calls immediately on client (Firestore-backed) — surgical addition
