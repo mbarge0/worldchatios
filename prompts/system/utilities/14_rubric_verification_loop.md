@@ -8,7 +8,7 @@
 ---
 
 ## Purpose
-To perform a **complete rubric-based verification** of the deployed or local build — unifying technical validation, rubric comparison, and visual/manual evidence into one QA step.  
+To perform a **complete rubric-based verification with automated scoring**, using rubric data dynamically extracted from the project requirements file.  of the deployed or local build — unifying technical validation, rubric comparison, and visual/manual evidence into one QA step.  
 
 This step validates that all rubric categories meet the submission criteria and produces a final structured report.
 
@@ -54,7 +54,19 @@ This step validates that all rubric categories meet the submission criteria and 
      `Evidence: [Screenshot: /public/screenshots/login.png]`  
      `Evidence: [Console Log: drag latency 12ms avg]`
 
-4. **Generate Structured Output**
+4. **Analyze Rubric**
+   - Extract rubric categories and their point allocations dynamically.  
+   - Example (parsed from file):  
+     Functionality — 20 pts  
+     Performance — 15 pts  
+     Accessibility & UX — 10 pts 
+
+5. **Verify and Score**
+   - Check each rubric criterion via inspection and testing.  
+   - Award points dynamically based on compliance status.  
+   - Sum all awarded points and compute percentage.
+
+6. **Generate Structured Output**
    - Context (build type, date, environment)
    - Rubric summary
    - Category-by-category evaluation

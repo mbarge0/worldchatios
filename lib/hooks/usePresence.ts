@@ -38,6 +38,9 @@ export function usePresence(canvasId: string | undefined) {
     const uid = user?.uid || 'dev'
     const displayName = deriveDisplayName(user?.email || 'dev@local.test')
     const color = randomColorForUser(uid)
+    // Unique per-tab/session key so same user in two windows appears twice
+    const sessionIdRef = useRef<string>(typeof crypto !== 'undefined' && 'randomUUID' in crypto ? (crypto as any).randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`)
+    const sessionKey = `${uid}:${sessionIdRef.current}`
 
     const lastSentRef = useRef(0)
     const cursorsRef = useRef<Record<string, RemoteCursor>>({})
@@ -51,14 +54,18 @@ export function usePresence(canvasId: string | undefined) {
     }
 
     useEffect(() => {
-        if (!canvasId) return
-        const presenceRef = ref(rtdb, `presence/${canvasId}/${uid}`)
+        if (!canvasId || typeof canvasId !== 'string' || canvasId.length === 0) return
+        const presenceRef = ref(rtdb, `presence/${canvasId}/${sessionKey}`)
         // initial presence
+        // eslint-disable-next-line no-console
+        console.log('[usePresence] Initialized presence for canvasId:', canvasId)
         set(presenceRef, {
             online: true,
             displayName,
             color,
             ts: Date.now(),
+            userId: uid,
+            sessionId: sessionIdRef.current,
         }).catch((e) => {
             if (!isTransientPermissionError(e)) console.error(e)
         })
@@ -79,16 +86,13 @@ export function usePresence(canvasId: string | undefined) {
             })
         }, 15000)
         return () => {
-            // best-effort offline (onDisconnect will handle abrupt closes)
-            set(presenceRef, { online: false, displayName, color, ts: Date.now() }).catch((e) => {
-                if (!isTransientPermissionError(e)) console.error(e)
-            })
+            // rely on onDisconnect.remove(); avoid transient offline flicker
             clearInterval(heartbeat)
         }
-    }, [canvasId, uid, displayName, color])
+    }, [canvasId, uid, displayName, color, sessionKey])
 
     useEffect(() => {
-        if (!canvasId) return
+        if (!canvasId || typeof canvasId !== 'string' || canvasId.length === 0) return
         const allRef = ref(rtdb, `presence/${canvasId}`)
         let unsub = onValue(allRef, (snap) => {
             const val = snap.val() || {}
@@ -96,9 +100,9 @@ export function usePresence(canvasId: string | undefined) {
             const nextParticipants: Record<string, Participant> = {}
             Object.entries<any>(val).forEach(([id, data]) => {
                 const cursor = data.cursor || { x: 0, y: 0, ts: 0 }
-                if (id !== uid) {
+                if (id !== sessionKey) {
                     nextCursors[id] = {
-                        userId: id,
+                        userId: id, // session key ensures uniqueness per tab
                         displayName: data.displayName,
                         color: data.color,
                         x: cursor.x,
@@ -131,7 +135,7 @@ export function usePresence(canvasId: string | undefined) {
                     const nextParticipants: Record<string, Participant> = {}
                     Object.entries<any>(val).forEach(([id, data]) => {
                         const cursor = data.cursor || { x: 0, y: 0, ts: 0 }
-                        if (id !== uid) {
+                        if (id !== sessionKey) {
                             nextCursors[id] = {
                                 userId: id,
                                 displayName: data.displayName,
@@ -156,16 +160,19 @@ export function usePresence(canvasId: string | undefined) {
             }
         }
         document.addEventListener('visibilitychange', handleVisibility)
-        return () => unsub()
-    }, [canvasId, uid])
+        return () => {
+            unsub()
+            document.removeEventListener('visibilitychange', handleVisibility)
+        }
+    }, [canvasId, sessionKey])
 
     const sendCursor = (x: number, y: number) => {
         const now = Date.now()
         if (document.hidden) return
         if (now - lastSentRef.current < 50) return // ~20 Hz
         lastSentRef.current = now
-        if (!canvasId) return
-        const cursorRef = ref(rtdb, `presence/${canvasId}/${uid}`)
+        if (!canvasId || typeof canvasId !== 'string' || canvasId.length === 0) return
+        const cursorRef = ref(rtdb, `presence/${canvasId}/${sessionKey}`)
         update(cursorRef, { cursor: { x, y, ts: now } }).catch((e) => {
             if (!isTransientPermissionError(e)) console.error(e)
         })
