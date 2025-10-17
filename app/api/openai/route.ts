@@ -208,15 +208,19 @@ export async function POST(req: NextRequest) {
             })
         }
 
+        const text = message?.content || ''
+        // eslint-disable-next-line no-console
+        console.log(`\u{1F4AC} AI replied: ${text}`)
         return NextResponse.json({
-            message: message?.content || null,
+            status: 'ok',
+            message: text,
             toolCalls: results,
             model: completion.model,
             usage: completion.usage || null,
         })
     } catch (e: any) {
         const msg = e?.message || 'Unknown error'
-        return NextResponse.json({ error: msg }, { status: 500 })
+        return NextResponse.json({ status: 'error', error: msg }, { status: 500 })
     }
 }
 

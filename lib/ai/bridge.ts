@@ -82,9 +82,15 @@ async function createSquare(canvasId: string, shape?: Partial<SquareShape>): Pro
         // eslint-disable-next-line no-console
         console.log('✅ Square rendered to canvas')
     } catch { }
-    // eslint-disable-next-line no-console
-    console.log('🎨 AI created a square on canvas', canvasId)
-    await fsCreateShape(canvasId, payload as any)
+    // Persist to Firestore with idempotent create (merge)
+    try {
+        await fsCreateShape(canvasId, payload as any)
+        // eslint-disable-next-line no-console
+        console.log('✅ Shape persisted to Firestore')
+    } catch (e: any) {
+        // eslint-disable-next-line no-console
+        console.warn('⚠️ Firestore create failed:', e?.message || e)
+    }
 }
 
 async function createText(canvasId: string, shape?: Partial<TextNode>): Promise<void> {
@@ -135,9 +141,14 @@ async function createText(canvasId: string, shape?: Partial<TextNode>): Promise<
         // eslint-disable-next-line no-console
         console.log('✅ Added text to canvas store')
     } catch { }
-    // eslint-disable-next-line no-console
-    console.log('🎨 AI created a text node on canvas', canvasId)
-    await fsCreateShape(canvasId, payload as any)
+    try {
+        await fsCreateShape(canvasId, payload as any)
+        // eslint-disable-next-line no-console
+        console.log('✅ Text persisted to Firestore')
+    } catch (e: any) {
+        // eslint-disable-next-line no-console
+        console.warn('⚠️ Firestore create failed:', e?.message || e)
+    }
 }
 
 export function installCcTools(): void {
