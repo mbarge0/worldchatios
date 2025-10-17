@@ -442,11 +442,110 @@ Testing Focus
 - Integration: Chat UI with API calls; state persistence; speech toggles.
 - E2E: "Draw a circle" → AI creates object; reload → state persists; voice input/output stable.
 
-Documentation References
-- PRD: `/docs/foundation/prd.md`
-- Architecture: `/docs/foundation/architecture.md`
-- Dev Checklist: `/docs/foundation/dev_checklist.md`
-- Requirements: `/docs/requirements/requirements2.md`
+---
+
+## Module #13: Tune-Up Sprint (UI + Brand Integration)
+
+- Date: 2025-10-17
+- Owner: Matt Barge
+- Status: Not Started
+
+Context: Final polish, performance tuning, and personal brand alignment after AI Agent integration; incorporates Ash’s MVP review feedback. Treated as a mini supermodule with its own structure, tracking, and completion criteria.
+
+Goals:
+- Visual refresh and brand alignment across login, toolbar, chat drawer, and canvas.
+- Toolbar reposition to left, consolidate alignment controls, and reduce size.
+- Canvas performance improvements (zoom/drag responsiveness) and shape spawn at viewport center.
+
+Submodules:
+- [13A — Brand & UI Enhancements](#submodule-13a-brand--ui-enhancements)
+- [13B — Toolbar Refactor](#submodule-13b-toolbar-refactor)
+- [13C — Canvas Experience Improvements](#submodule-13c-canvas-experience-improvements)
+- [13D — Documentation Cleanup](#submodule-13d-documentation-cleanup)
+
+References: `/docs/foundation/prd.md`, `/docs/foundation/architecture.md`
+
+---
+
+### Submodule 13A: Brand & UI Enhancements
+
+- [ ] [Plan] Define brand tokens (colors, typography scale) and apply via CSS variables
+  - Acceptance: tokens available in `app/globals.css` and referenced in UI components.
+  - Testing: visual regression screenshots updated; contrast ratios AA+ for text/UI controls.
+- [ ] [Build] Repaint login right panel with brand palette and modern background
+  - Acceptance: login page shows branded right panel (gradient/texture/image) aligned to palette.
+  - Testing: e2e login renders branded layout; a11y scan passes (axe) with no critical issues.
+- [ ] [Build] Apply consistent brand colors to toolbar and chat drawer
+  - Acceptance: toolbar and chat drawer adopt brand background/foreground, hover/active states.
+  - Testing: snapshot of toolbar/chat drawer; interactive hover/focus states verified.
+- [ ] [Build] Refresh canvas background and typography across main app
+  - Acceptance: subtle canvas backdrop (brand-friendly neutral) and updated heading/body styles.
+  - Testing: visual diff shows updated typography scale; no overflow/regression in responsive layouts.
+- [ ] [Validate] Accessibility and contrast review post-theme
+  - Acceptance: all interactive elements achieve AA contrast; focus rings visible and unobstructed.
+  - Testing: axe audit; keyboard-only nav through login, toolbar, and chat drawer.
+
+Dependencies: Authentication & Canvas UI; Chat Interface Front-End; Personal Brand UI tasks in Module B5.
+
+---
+
+### Submodule 13B: Toolbar Refactor
+
+- [ ] [Build] Move toolbar to left-hand side
+  - Acceptance: toolbar docks to left; does not collide with macOS dock; persists across routes.
+  - Testing: e2e verifies position and visibility across viewport sizes.
+- [ ] [Build] Consolidate alignment buttons into a grouped control
+  - Acceptance: Align/Distribute actions presented as a single grouped menu or flyout.
+  - Testing: unit tests for alignment math still pass; e2e triggers from grouped control.
+- [ ] [Build] Reduce toolbar width and improve layout hierarchy
+  - Acceptance: compact sizing (icons + labels where needed), clear primary vs secondary groupings.
+  - Testing: visual snapshot; hit-target sizes ≥ 40px for touch accessibility.
+- [ ] [Validate] Keyboard access and tooltips
+  - Acceptance: all controls keyboard-focusable with tooltips/ARIA labels; shortcuts displayed.
+  - Testing: axe and keyboard traversal; tooltip visibility on focus/hover.
+
+Dependencies: Canvas Engine & UI; Advanced Features Suite (alignment/distribute); Shared AI State UI surfaces.
+
+---
+
+### Submodule 13C: Canvas Experience Improvements
+
+- [ ] [Build] Optimize Konva rendering for smoother drag/zoom
+  - Acceptance: 60 FPS interactions on 500+ shapes; no noticeable input lag on pan/zoom.
+  - Testing: manual profiling; ensure rAF-driven updates and unnecessary layer redraws avoided.
+- [ ] [Build] Adjust shape spawn logic to respect current viewport center
+  - Acceptance: creating shapes spawns at the current viewport’s visual center at any zoom level.
+  - Testing: e2e create-after-zoom places items within ±16px of viewport center.
+- [ ] [Build] Add subtle grid or texture background
+  - Acceptance: non-intrusive background (grid/texture) that complements brand; no perf regression.
+  - Testing: toggle/visibility verified; frame times stable within ±2 ms of baseline.
+- [ ] [Validate] Interaction latency and smoothness
+  - Acceptance: drag latency <16 ms/frame; wheel/zoom curve feels linear and predictable.
+  - Testing: repeatable profiling notes captured; no stutter under typical loads.
+
+Dependencies: Canvas Engine & UI; Observability & Performance; Advanced Features (optional grid interop).
+
+---
+
+### Submodule 13D: Documentation Cleanup
+
+- [ ] [Build] Prune outdated docs and consolidate brand/UI guidance
+  - Acceptance: removed superseded drafts; updated references to brand tokens and UI locations.
+  - Testing: internal link check passes; no dead links to removed docs.
+- [ ] [Validate] Update screenshots in README/dev docs post-refresh
+  - Acceptance: screenshots reflect new login, toolbar (left), and chat drawer styling.
+  - Testing: visual verification; paths correct and load in repo.
+
+Dependencies: Completion of visual refresh tasks in 13A–13C.
+
+---
+
+Completion Criteria (Deliverables):
+- Visual updates consistent with Matt’s brand palette across login, toolbar, chat drawer, and canvas.
+- Toolbar relocated to left and simplified with grouped alignment controls.
+- Canvas interactions feel smoother (no noticeable lag) with improved drag/zoom.
+- Shape creation appears at the viewport’s focus area.
+- Documentation pruned and clean with updated visuals.
 
 ---
 
