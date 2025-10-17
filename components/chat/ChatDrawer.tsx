@@ -1,6 +1,7 @@
 'use client'
 
 import Button from '@/components/ui/Button'
+import * as Actions from '@/lib/ai/actions'
 import { loadAISession, saveAISession } from '@/lib/data/ai-session'
 import { useFirebaseAuth } from '@/lib/hooks/useFirebaseAuth'
 import { CornerDownLeft, Mic, Undo2, Volume2, X } from 'lucide-react'
@@ -65,7 +66,7 @@ export default function ChatDrawer({ canvasId, open, onClose }: ChatDrawerProps)
     const handleSend = async () => {
         const trimmed = input.trim()
         if (!trimmed || sending) return
-        const nextMsgs = [...messages, { role: 'user', content: trimmed }]
+        const nextMsgs: ChatMessage[] = [...messages, { role: 'user' as const, content: trimmed }]
         setMessages(nextMsgs)
         setInput('')
         setSending(true)
@@ -82,11 +83,45 @@ export default function ChatDrawer({ canvasId, open, onClose }: ChatDrawerProps)
             const data = await res.json()
             if (!res.ok) throw new Error(data?.error || 'AI error')
             const text = data?.message || '(no response)'
-            setMessages((prev) => [...prev, { role: 'assistant', content: text }])
+            setMessages((prev) => [...prev, { role: 'assistant' as const, content: text }])
             const calls = Array.isArray(data?.toolCalls) ? data.toolCalls as Array<{ call: ToolCallRecord }> : []
             setLastToolCalls(calls.map((c) => c.call))
+            // Execute tool calls immediately on client (Firestore-backed) — surgical addition
+            for (const { call } of calls) {
+                const name = call?.name
+                const args = call?.arguments || {}
+                // eslint-disable-next-line no-console
+                console.log('🧩 Executing AI tool call:', { name, args })
+                const bridge = (typeof window !== 'undefined' ? (window as any).ccTools : undefined) || {}
+                const exec = bridge[name] || (Actions as any)[name]
+                if (typeof exec === 'function') {
+                    try {
+                        if (name === 'createShape') {
+                            await exec(args.canvasId || canvasId, args.shape)
+                        } else if (name === 'createText') {
+                            await exec(args.canvasId || canvasId, args.shape)
+                        } else if (name === 'moveShape') {
+                            await exec(args.canvasId || canvasId, args.shapeId, args.x, args.y)
+                        } else if (name === 'resizeShape') {
+                            await exec(args.canvasId || canvasId, args.shapeId, args.width, args.height)
+                        } else if (name === 'rotateShape') {
+                            await exec(args.canvasId || canvasId, args.shapeId, args.rotation)
+                        } else if (name === 'alignShapes') {
+                            await exec(args.canvasId || canvasId, args.nodes, args.selectedIds, args.op)
+                        } else if (name === 'zIndexUpdate') {
+                            await exec(args.canvasId || canvasId, args.nodes, args.selectedIds, args.op)
+                        } else if (name === 'getCanvasState') {
+                            // read-only; optionally ignore
+                            await exec(args.canvasId || canvasId)
+                        }
+                    } catch (e) {
+                        // eslint-disable-next-line no-console
+                        console.error('AI tool call execution failed:', name, e)
+                    }
+                }
+            }
             // Persist session
-            try { await saveAISession(canvasId, String(userId), { messages: [...nextMsgs, { role: 'assistant', content: text }], lastToolCalls: calls.map((c) => c.call) }) } catch { }
+            try { await saveAISession(canvasId, String(userId), { messages: [...nextMsgs, { role: 'assistant' as const, content: text }], lastToolCalls: calls.map((c) => c.call) }) } catch { }
             if (speechActive && typeof window !== 'undefined' && 'speechSynthesis' in window) {
                 try {
                     const utter = new SpeechSynthesisUtterance(String(text))
@@ -97,7 +132,7 @@ export default function ChatDrawer({ canvasId, open, onClose }: ChatDrawerProps)
                 } catch { /* ignore */ }
             }
         } catch (e: any) {
-            setMessages((prev) => [...prev, { role: 'assistant', content: `Error: ${e?.message || 'Unknown error'}` }])
+            setMessages((prev) => [...prev, { role: 'assistant' as const, content: `Error: ${e?.message || 'Unknown error'}` }])
         } finally {
             setSending(false)
         }

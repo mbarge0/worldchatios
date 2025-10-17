@@ -20,6 +20,8 @@ export interface ButtonProps {
   className?: string;
   /** HTML button type */
   type?: 'button' | 'submit' | 'reset';
+  /** Optional title attribute */
+  title?: string;
 }
 
 /**
@@ -55,20 +57,21 @@ export default function Button({
   children,
   className = '',
   type = 'button',
+  title,
 }: ButtonProps) {
   // Base styles shared by all buttons
   const baseStyles = 'px-4 py-3 rounded-lg transition-colors font-medium focus:outline-none focus:ring-2 focus:ring-offset-2';
-  
+
   // Variant-specific styles
   const variantStyles = {
     primary: 'bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500',
     secondary: 'bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-500',
     danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
   };
-  
+
   // Disabled/loading state styles
-  const disabledStyles = (disabled || loading) 
-    ? 'opacity-50 cursor-not-allowed' 
+  const disabledStyles = (disabled || loading)
+    ? 'opacity-50 cursor-not-allowed'
     : 'cursor-pointer';
 
   return (
@@ -82,6 +85,7 @@ export default function Button({
         ${disabledStyles}
         ${className}
       `}
+      title={title}
     >
       {loading ? (
         <span className="flex items-center justify-center gap-2">
