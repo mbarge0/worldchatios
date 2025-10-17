@@ -11,7 +11,8 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "test:ai": "vitest run tests/e2e/ai-agent --run"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.19.0",

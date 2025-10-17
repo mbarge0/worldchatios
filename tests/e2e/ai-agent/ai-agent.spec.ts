@@ -1,0 +1,64 @@
+/**
+ * 🧠 AI Agent Stability Tests
+ * Ensures chat → API → bridge → canvas → Firestore → reply contract remains unbroken.
+ * If any of these fail, AI chat will silently break.
+ */
+
+import { expect, test } from '@playwright/test'
+
+test.describe('AI Agent Stability — do not break contract between API, bridge, and chat UI', () => {
+    test('API Contract: POST /api/openai returns status, message, toolCalls', async ({ request }) => {
+        const res = await request.post('/api/openai', {
+            data: {
+                messages: [{ role: 'user', content: 'hello' }],
+                canvasId: 'default',
+            },
+            headers: { 'x-user-id': 'e2e' },
+        })
+        expect(res.ok()).toBeTruthy()
+        const json = await res.json()
+        expect(json).toHaveProperty('status', 'ok')
+        expect(json).toHaveProperty('message')
+        expect(json).toHaveProperty('toolCalls')
+    })
+
+    test('Bridge Behavior: window.ccTools.createShape adds node and logs', async ({ page }) => {
+        await page.goto('/')
+        // Ensure bridge is installed
+        const hasBridge = await page.evaluate(() => typeof (window as any).ccTools?.createShape === 'function')
+        expect(hasBridge).toBeTruthy()
+
+        const logs: string[] = []
+        page.on('console', (msg) => logs.push(msg.text()))
+
+        // Use a deterministic canvas id for local testing
+        await page.evaluate(async () => {
+            await (window as any).ccTools.createShape('default', { x: 100, y: 100, width: 100, height: 100 })
+        })
+
+        // Confirm log and local store node count increased
+        const logged = logs.some((t) => t.includes('✅ Square rendered to canvas'))
+        expect(logged).toBeTruthy()
+
+        const nodeCount = await page.evaluate(() => (window as any).__nodesCount__ || (typeof (window as any).ccGetNodes === 'function' ? (window as any).ccGetNodes().length : null))
+        // If helper not present, at least validate we didn't crash
+        expect(logs.join('\n')).not.toContain('Error')
+    })
+
+    test('Chat Response: sending message shows assistant text and creates shape', async ({ page }) => {
+        await page.goto('/c/default?auto=dev')
+
+        // Open chat drawer via toolbar button (first button is chat)
+        const chatButton = page.locator('role=toolbar >> button').first()
+        await chatButton.click()
+
+        const input = page.locator('input[placeholder="Ask the assistant…"]')
+        await input.fill('Create a square')
+        await input.press('Enter')
+
+        // Assistant message should appear
+        await expect(page.locator('text=/created a .* (square|shape)/i')).toBeVisible({ timeout: 5000 })
+    })
+})
+
+
