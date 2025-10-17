@@ -336,22 +336,117 @@ Unified Acceptance & QA: All features are accessible via toolbar/shortcuts; Play
 
 
 
-## Module #13: AI Agent & Tools (Final)
+## Supermodule — AI Agent, LangChain Orchestration, Voice & Brand UX (Modules B1–B5)
 
-- [ ] Tool schema: `createShape`, `moveShape`, `resizeShape`, `rotateShape`, `createText`, `getCanvasState`
-  - Acceptance: functions validated; unit tests for handlers.
-  - Testing: unit + contract tests.
-- [ ] Next.js API proxy to OpenAI with function calling
-  - Acceptance: prompts invoke tools; errors handled; rate limit 3 QPS/user.
-  - Testing: integration with mocked OpenAI.
-- [ ] Agent identity and broadcast
-  - Acceptance: actions appear as bot user; changes sync in real time.
-  - Testing: e2e two-user + agent scenario.
-- [ ] Minimal chat UI drawer (final only)
-  - Acceptance: submit prompt; shows tool call/action result.
-  - Testing: integration UI flow.
+Purpose: Deliver a fully interactive AI Agent capable of tool use via the OpenAI API and LangChain orchestration, integrated with chat and voice interfaces, unified AI state, and visual polish applying Matt Barge personal brand colors.
 
-Dependencies: MVP complete, Environment & Tooling.
+Contained Modules:
+- B1) OpenAI Integration
+- B2) LangChain Orchestration Layer
+- B3) Chat Interface Front-End
+- B4) Voice Input & Output
+- B5) Shared AI State, Persistence & Personal Brand UI
+
+References:
+- Requirements: `/docs/requirements/requirements2.md`
+- Architecture/PRD: `/docs/foundation/architecture.md`, `/docs/foundation/prd.md`
+
+---
+
+## Module B1: OpenAI Integration
+
+- [ ] [Build] Set up Next.js API route `/api/openai` proxying to OpenAI API.
+  - Acceptance: supports function calling to registered canvas tools (`createShape`, `moveShape`, etc.); rate-limited to 3 QPS/user.
+  - Testing: integration with mock OpenAI responses; rate limit verification.
+- [ ] [Build] Secure environment variables via `.env.local` (`OPENAI_API_KEY`).
+  - Acceptance: no keys exposed client-side; errors handled gracefully.
+  - Testing: manual failure injection + logging checks.
+
+---
+
+## Module B2: LangChain Orchestration Layer
+
+- [ ] [Build] Create orchestration pipeline using LangChain or LangGraph for multi-turn reasoning.
+  - Acceptance: agent can interpret natural language → select appropriate tool → act → respond.
+  - Testing: simulated prompts like "move the blue rectangle 10 pixels right."
+- [ ] [Build] Define memory and context management strategy (ephemeral vs persisted state).
+  - Acceptance: short conversation memory; cleared after idle 10 min.
+  - Testing: confirm state expiry and reinitialization.
+- [ ] [Validate] Logging of agent reasoning chain (debug mode only).
+  - Acceptance: recorded to console or Firestore log for inspection.
+
+---
+
+## Module B3: Chat Interface Front-End
+
+- [ ] [Build] Add collapsible chat drawer on right side of canvas.
+  - Acceptance: opens via toolbar button or shortcut; resizable; sticky input at bottom.
+  - Testing: e2e user-to-agent chat flow.
+- [ ] [Build] Show agent responses inline, including any triggered actions or error messages.
+  - Acceptance: visible "Assistant" avatar and distinct bubble style.
+- [ ] [Build] Contextual tool buttons (e.g., "Undo last AI action").
+  - Acceptance: clicking tool action replays last command.
+  - Testing: interaction + visual.
+
+---
+
+## Module B4: Voice Input & Output
+
+- [ ] [Build] Implement browser-based microphone input via Web Speech API.
+  - Acceptance: converts speech to text, populates chat input.
+  - Testing: manual verification in Chrome/Edge.
+- [ ] [Build] Enable speech synthesis for agent responses.
+  - Acceptance: agent replies spoken aloud with adjustable rate/pitch.
+  - Testing: audio playback correctness and browser compatibility.
+- [ ] [Validate] Voice control toggle in chat drawer.
+  - Acceptance: accessible via keyboard; status visible (active/muted).
+
+---
+
+## Module B5: Shared AI State, Persistence & Personal Brand UI
+
+- [ ] [Build] Persist AI session context in Firestore (conversation + tool history).
+  - Acceptance: restored on reload; session scoped to user and canvas.
+  - Testing: reload restores last few messages.
+- [ ] [Build] Apply Matt Barge brand palette:
+  - Colors:
+    - Dark Blue #072d51
+    - Gold #cfa968
+    - White #ffffff
+    - Light Blue #cdd2c5
+  - Acceptance: login hero image, toolbar, and chat drawer adopt this theme.
+- [ ] [Build] Apply UX polish:
+  - Move toolbar to left side (to avoid macOS dock conflict)
+  - Improve zoom smoothness and shape placement under zoom context
+  - Acceptance: interactions performant at 60 FPS.
+- [ ] [Validate] Accessibility + contrast check post-theme.
+  - Testing: axe audit passes with no critical violations.
+
+---
+
+Unified Dependencies
+- OpenAI API (via server proxy)
+- LangChain JS or LangGraph
+- Firestore for persistence
+- Web Speech API
+- Canvas Engine + Toolbar
+
+Unified Acceptance
+- Full end-to-end AI chat flow works: user → chat → tool → visual action → response.
+- Voice input/output operates reliably in supported browsers.
+- Personal branding consistent throughout UI (color palette, hero image, contrast).
+- No performance regressions (<100ms tool latency; 60 FPS interaction).
+
+Testing Focus
+- Unit: Tool schema handlers; LangChain pipeline; voice utils.
+- Integration: Chat UI with API calls; state persistence; speech toggles.
+- E2E: "Draw a circle" → AI creates object; reload → state persists; voice input/output stable.
+
+Documentation References
+- PRD: `/docs/foundation/prd.md`
+- Architecture: `/docs/foundation/architecture.md`
+- Dev Checklist: `/docs/foundation/dev_checklist.md`
+- Requirements: `/docs/requirements/requirements2.md`
 
 ---
 

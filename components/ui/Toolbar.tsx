@@ -1,7 +1,7 @@
 'use client'
 
 import Button from '@/components/ui/Button'
-import { Download, Grid, Layers, Square, Type } from 'lucide-react'
+import { Download, Grid, Layers, MessageSquare, Square, Type } from 'lucide-react'
 
 type ToolbarProps = {
     onAddRect?: () => void
@@ -15,12 +15,14 @@ type ToolbarProps = {
     onSaveVersion?: () => void
     onRestoreVersion?: () => void
     onToggleGrid?: () => void
+    onToggleChat?: () => void
     className?: string
 }
 
-export default function Toolbar({ onAddRect, onAddText, onDuplicate, onDelete, onAlign, onZIndex, onExport, onExportSelection, onToggleGrid, onSaveVersion, onRestoreVersion, className = '' }: ToolbarProps) {
+export default function Toolbar({ onAddRect, onAddText, onDuplicate, onDelete, onAlign, onZIndex, onExport, onExportSelection, onToggleGrid, onToggleChat, onSaveVersion, onRestoreVersion, className = '' }: ToolbarProps) {
     return (
-        <div className={`flex items-center gap-2 bg-white/80 backdrop-blur rounded-xl shadow border px-2 py-1 ${className}`} role="toolbar" aria-label="Canvas toolbar">
+        <div className={`flex items-center gap-2 bg-[var(--brand-dark)]/90 text-[var(--brand-white)] backdrop-blur rounded-xl shadow border border-[var(--brand-gold)]/30 px-2 py-1 ${className}`} role="toolbar" aria-label="Canvas toolbar">
+            <Button variant="secondary" onClick={onToggleChat} title="Toggle Chat (Ctrl+`)" className="!bg-[var(--brand-gold)] !text-[var(--brand-dark)]"><MessageSquare className="w-4 h-4" /></Button>
             <Button variant="secondary" onClick={onAddRect} title="Rectangle (R)"><Square className="w-4 h-4" /></Button>
             <Button variant="secondary" onClick={onAddText} title="Text (T)"><Type className="w-4 h-4" /></Button>
             <div className="w-px h-6 bg-slate-200 mx-1" />

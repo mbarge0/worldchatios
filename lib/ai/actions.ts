@@ -1,15 +1,30 @@
-import { createShape as fsCreateShape, updateShape as fsUpdateShape } from '@/lib/data/firestore-adapter'
+import { createShape as fsCreateShape, updateShape as fsUpdateShape, listShapes } from '@/lib/data/firestore-adapter'
 import type { CanvasNode } from '@/lib/store/canvas-store'
+import { v4 as uuidv4 } from 'uuid'
 
 // Basic types
 export type AlignOp = 'left' | 'centerX' | 'right' | 'top' | 'middleY' | 'bottom' | 'distributeH' | 'distributeV'
 export type ZIndexOp = 'front' | 'back' | 'forward' | 'backward'
 
 export async function createShape(canvasId: string, shape: any): Promise<void> {
+    if (!canvasId) throw new Error('[createShape] Missing canvasId')
+    if (!shape || typeof shape !== 'object') {
+        // eslint-disable-next-line no-console
+        console.warn('[createShape] Missing or invalid shape object, creating default circle.')
+        shape = { id: uuidv4(), type: 'circle', x: 100, y: 100, width: 100, height: 100, rotation: 0, zIndex: Date.now(), fill: '#cfa968', opacity: 1, updatedAt: Date.now() }
+    }
+    if (!shape.id) shape.id = uuidv4()
     await fsCreateShape(canvasId, shape)
 }
 
 export async function createText(canvasId: string, shape: any): Promise<void> {
+    if (!canvasId) throw new Error('[createText] Missing canvasId')
+    if (!shape || typeof shape !== 'object') {
+        // eslint-disable-next-line no-console
+        console.warn('[createText] Missing or invalid shape object, creating default text box.')
+        shape = { id: uuidv4(), type: 'text', x: 150, y: 150, width: 200, height: 40, rotation: 0, zIndex: Date.now(), text: 'New Text', fontSize: 18, fontFamily: 'Inter, system-ui, sans-serif', fill: '#072d51', opacity: 1, updatedAt: Date.now() }
+    }
+    if (!shape.id) shape.id = uuidv4()
     await fsCreateShape(canvasId, shape)
 }
 
@@ -124,6 +139,12 @@ export async function persistZIndexNormalization(canvasId: string, nodes: Canvas
     for (const n of normalized as any[]) {
         await fsUpdateShape(canvasId, n.id, { zIndex: n.zIndex } as any)
     }
+}
+
+// Introspection helpers for the AI agent
+export async function getCanvasState(canvasId: string): Promise<any[]> {
+    // Returns current shapes for the given canvas
+    return await listShapes(canvasId)
 }
 
 

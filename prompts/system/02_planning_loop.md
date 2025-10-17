@@ -29,6 +29,7 @@ Please:
    - Add regression checks to this phase’s debugging plan.
 6. Reconfirm success criteria for the remainder of the phase.  
 7. Propose the next set of clear, actionable steps to resume execution.
+8. (Optional) If there is environment or third-party tool set up required before or during build phase execution, generate an Environment & Dependency Checklist using the Environment & Dependency Checklist rubric outlined below.
 
 ---
 
@@ -60,6 +61,31 @@ The resulting document should mirror the following structure:
 - **Next Steps** — what happens immediately after planning  
 
 This mode is ideal for complex modules that require step-by-step coordination across components or systems.
+
+--
+
+### Optional Output: Environment & Dependency Checklist
+
+After completing the Plan phase report, generate an additional checklist file:
+
+**File Path:** `/docs/operations/phases/phase-{{phase-number}}-02-dependencies.md`
+
+This file should list all manual setup actions required before or during Build phase execution.  
+Include both environment configuration and third-party tool setup.
+
+**Checklist Sections:**
+- Environment Variables (`.env.local` or platform secrets)
+- Dependency Installs (npm, brew, CLI tools, etc.)
+- Account Setup (Firebase, OpenAI, external APIs)
+- Billing / Plan Requirements (e.g., Firebase Blaze)
+- Local Testing Setup (Ports, emulators, mock data)
+- Deployment Prep (hosting config, function paths)
+- Authentication / Security configuration (if needed)
+
+The checklist should be actionable — explicit commands, URLs, or steps to verify readiness.  
+Mark optional steps with `(Optional)` and blockers with `(Required before Build)`.
+
+**Output file:** `/docs/operations/phases/phase-{{phase-number}}-02-dependencies.md`
 
 ---
 

@@ -11,7 +11,8 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "test:ai": "vitest run tests/e2e/ai-agent --run"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.19.0",
@@ -21,6 +22,7 @@
     "firebase": "^12.4.0",
     "framer-motion": "^12.23.22",
     "konva": "^10.0.2",
+    "langchain": "^0.3.36",
     "lodash-es": "^4.17.21",
     "lucide-react": "^0.544.0",
     "next": "15.5.4",
