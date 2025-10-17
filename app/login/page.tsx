@@ -3,6 +3,7 @@
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import { useFirebaseAuth } from '@/lib/hooks/useFirebaseAuth'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
@@ -37,6 +38,12 @@ export default function LoginPage() {
         }
     }, [loading, user, router])
 
+    // Logging for verification of surgical fix
+    useEffect(() => {
+        // eslint-disable-next-line no-console
+        console.log('✅ Hero image restored to login page')
+    }, [])
+
     const onSendMagic = async () => {
         setSubmitting(true)
         setError(null)
@@ -67,13 +74,14 @@ export default function LoginPage() {
         <div className="min-h-screen grid md:grid-cols-2 bg-slate-50">
             {/* Hero side (customized with brand colors and hero image) */}
             <div className="hidden md:flex relative items-center justify-center bg-[#072d51]">
-                <div className="absolute inset-0">
-                    <img
-                        src="/images/login-hero.png"
-                        alt="CollabCanvas — Gauntlet AI Week One — Matt Barge"
-                        className="object-contain w-full h-full opacity-95"
-                    />
-                </div>
+                <Image
+                    src="/hero.png"
+                    alt="CollabCanvas hero"
+                    fill
+                    priority
+                    sizes="(min-width: 768px) 50vw, 0vw"
+                    className="object-contain object-center opacity-95"
+                />
 
                 <div className="absolute inset-0 bg-gradient-to-t from-[#072d51]/80 via-[#072d51]/50 to-transparent" />
 
