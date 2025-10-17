@@ -13,4 +13,6 @@ Conclude with an overall submission readiness status (Ready / Needs Review / Blo
 Store the resulting rubric verification report under:  
 `/docs/operations/phases/phase-XX-05-verification.md`
 
-**Rubric Verification Loop Template reference**: `/prompts/system/05_rubric_verification_loop.md`
+**Rubric Verification Loop Template reference**: `/prompts/system/14_rubric_verification_loop.md`
+
+The requirements for this project are located at `/docs/requirements/requirements.md`
