@@ -94,14 +94,14 @@ export default function LoginPage() {
             </div>
 
             {/* Auth card */}
-            <div className="flex items-center justify-center p-8">
+            <div className="flex items-center justify-center p-8 bg-[var(--brand-white)]">
                 <div className="w-full max-w-md space-y-6">
                     <div className="text-center space-y-1">
-                        <h1 className="text-2xl font-semibold tracking-tight">CollabCanvas</h1>
-                        <p className="text-sm text-slate-600">Design together, in real time.</p>
+                        <h1 className="text-2xl font-semibold tracking-tight text-[var(--brand-dark)]">CollabCanvas</h1>
+                        <p className="text-sm text-[var(--brand-light)]">Design together, in real time.</p>
                     </div>
 
-                    <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+                    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-6 shadow-sm">
                         <h2 className="text-lg font-medium mb-4">Sign in</h2>
 
                         {user ? (
@@ -174,7 +174,7 @@ export default function LoginPage() {
                                 </div>
                             </>
                         )}
-                        <p className="text-center text-xs text-slate-500 mt-4">By continuing, you agree to our terms.</p>
+                        <p className="text-center text-xs text-[var(--text-muted)] mt-4">By continuing, you agree to our terms.</p>
                     </div>
                 </div>
             </div>

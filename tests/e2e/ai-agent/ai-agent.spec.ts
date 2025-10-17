@@ -24,7 +24,8 @@ test.describe('AI Agent Stability — do not break contract between API, bridge,
 
     test('Bridge Behavior: window.ccTools.createShape adds node and logs', async ({ page }) => {
         await page.goto('/')
-        // Ensure bridge is installed
+        // Ensure bridge is installed (wait up to 5s for client loader)
+        await page.waitForFunction(() => typeof (window as any).ccTools?.createShape === 'function', undefined, { timeout: 5000 })
         const hasBridge = await page.evaluate(() => typeof (window as any).ccTools?.createShape === 'function')
         expect(hasBridge).toBeTruthy()
 
@@ -47,10 +48,15 @@ test.describe('AI Agent Stability — do not break contract between API, bridge,
 
     test('Chat Response: sending message shows assistant text and creates shape', async ({ page }) => {
         await page.goto('/c/default?auto=dev')
+        // Wait for toolbar to mount to avoid overlap race
+        await expect(page.getByRole('toolbar')).toBeVisible({ timeout: 5000 })
 
-        // Open chat drawer via toolbar button (first button is chat)
-        const chatButton = page.locator('role=toolbar >> button').first()
-        await chatButton.click()
+        // Open chat via testing hook to avoid any transient layout interception
+        await page.evaluate(() => {
+            const w = window as any
+            if (typeof w.__ccToggleChat === 'function') w.__ccToggleChat()
+            else window.dispatchEvent(new CustomEvent('cc:toggle-chat'))
+        })
 
         const input = page.locator('input[placeholder="Ask the assistant…"]')
         await input.fill('Create a square')

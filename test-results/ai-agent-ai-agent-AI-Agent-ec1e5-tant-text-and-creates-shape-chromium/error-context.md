@@ -1,0 +1,95 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e6] [cursor=pointer]:
+    - button "Open Next.js Dev Tools" [ref=e7]:
+      - img [ref=e8]
+    - generic [ref=e11]:
+      - button "Open issues overlay" [ref=e12]:
+        - generic [ref=e13]:
+          - generic [ref=e14]: "0"
+          - generic [ref=e15]: "1"
+        - generic [ref=e16]: Issue
+      - button "Collapse issues badge" [ref=e17]:
+        - img [ref=e18]
+  - generic [ref=e20]:
+    - banner [ref=e21]:
+      - heading "CollabCanvas" [level=1] [ref=e24]
+      - generic "Presence avatars" [ref=e26]:
+        - generic "Avatar for undefined" [ref=e29]: "?"
+        - generic "Avatar for undefined" [ref=e32]: "?"
+        - generic "Dev" [ref=e33]:
+          - generic "Avatar for Dev" [ref=e35]: D
+        - generic "Dev" [ref=e36]:
+          - generic "Avatar for Dev" [ref=e38]: D
+        - generic "Dev" [ref=e39]:
+          - generic "Avatar for Dev" [ref=e41]: D
+        - generic "Dev" [ref=e42]:
+          - generic "Avatar for Dev" [ref=e44]: D
+        - generic "Dev" [ref=e45]:
+          - generic "Avatar for Dev" [ref=e47]: D
+        - generic "Mbarge0" [ref=e48]:
+          - generic "Avatar for Mbarge0" [ref=e50]: M
+        - generic "Mbarge0" [ref=e51]:
+          - generic "Avatar for Mbarge0" [ref=e53]: M
+        - generic "Mbarge0" [ref=e54]:
+          - generic "Avatar for Mbarge0" [ref=e56]: M
+        - generic "Mbarge0" [ref=e57]:
+          - generic "Avatar for Mbarge0" [ref=e59]: M
+        - generic "Mylesethan93" [ref=e60]:
+          - generic "Avatar for Mylesethan93" [ref=e62]: M
+      - generic [ref=e63]:
+        - generic [ref=e64]:
+          - generic "Connection status" [ref=e65]:
+            - generic [ref=e66]: Connected
+          - generic [ref=e68]: dev@local.test
+          - button "Logout" [ref=e69] [cursor=pointer]
+        - generic [ref=e70]: "ID: default"
+    - main [ref=e71]:
+      - toolbar "Canvas toolbar" [ref=e73]:
+        - 'button "Toggle Chat (Ctrl+`)" [ref=e74] [cursor=pointer]':
+          - img [ref=e75]
+        - button "+ Rect" [ref=e77] [cursor=pointer]:
+          - img [ref=e78]
+          - text: + Rect
+        - button "+ Text" [ref=e80] [cursor=pointer]:
+          - img [ref=e81]
+          - text: + Text
+        - button "Dup" [ref=e84] [cursor=pointer]
+        - button "Del" [ref=e85] [cursor=pointer]
+        - button "Grid (G)" [ref=e87] [cursor=pointer]:
+          - img [ref=e88]
+        - button "Align ▾" [ref=e92] [cursor=pointer]
+        - button "Bring Forward" [ref=e94] [cursor=pointer]:
+          - img [ref=e95]
+        - button "Send Backward" [ref=e99] [cursor=pointer]:
+          - img [ref=e100]
+        - button "Export PNG (2x)" [ref=e105] [cursor=pointer]:
+          - img [ref=e106]
+        - button "Sel" [ref=e109] [cursor=pointer]
+        - button "SV" [ref=e110] [cursor=pointer]
+        - button "RL" [ref=e111] [cursor=pointer]
+      - complementary "AI Chat Drawer" [ref=e114]:
+        - generic [ref=e116]:
+          - generic [ref=e117]:
+            - generic [ref=e118]: A
+            - generic [ref=e119]: Assistant
+          - generic [ref=e120]:
+            - button "Voice input (toggle)" [ref=e121]:
+              - img [ref=e122]
+            - button "Speech output (toggle)" [ref=e125]:
+              - img [ref=e126]
+            - button "Close chat drawer" [ref=e130]:
+              - img [ref=e131]
+        - generic [ref=e134]:
+          - generic [ref=e136]: Create a square
+          - generic [ref=e138]: I've created a shape.
+        - generic [ref=e140]:
+          - textbox "Ask the assistant…" [disabled] [ref=e141]
+          - button "Send" [disabled] [ref=e142]:
+            - img [ref=e143]
+          - button "Undo last AI action" [ref=e146] [cursor=pointer]:
+            - img [ref=e147]
+  - alert [ref=e150]
+```

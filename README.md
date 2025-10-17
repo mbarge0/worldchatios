@@ -5,6 +5,13 @@ It enables multiple users to draw shapes, add text, and see each other's cursors
 
 🌐 **Live App:** [https://collab-canvas-xi.vercel.app](https://collab-canvas-xi.vercel.app)
 
+### Updated UI (Module 13)
+
+Login (brand repaint) and canvas with left-docked toolbar:
+
+![Login](/docs/operations/evidence/auto/login.png)
+![Canvas](/docs/operations/evidence/auto/canvas.png)
+
 ---
 
 ## 🚀 Features (MVP)

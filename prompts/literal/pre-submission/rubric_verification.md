@@ -5,7 +5,7 @@ Let’s perform a **Comprehensive Rubric Verification Review with Scoring** usin
 1. Rubric-based category validation (Functionality, Performance, Persistence, etc.)  
 2. Automated checks using code and endpoint context  
 3. Manual/visual evidence integration (screenshots, logs, or notes)
-4. Assign points automatically based on project requirements compliance
+4. Assign points automatically based on project requirements document
 5. Output a structured rubric verification report with scores and evidence.  
 6. Include a final numeric total (e.g., **Score: 94 / 100 pts (94%)**) and readiness verdict.   
 7. Overall submission readiness score and recommendations
