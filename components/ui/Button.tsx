@@ -64,7 +64,7 @@ export default function Button({
 
   // Variant-specific styles
   const variantStyles = {
-    primary: 'bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500',
+    primary: 'bg-[var(--brand-gold)] text-[var(--brand-dark)] hover:brightness-95 focus:ring-[var(--brand-gold)]',
     secondary: 'bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-500',
     danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
   };

@@ -11,7 +11,7 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
-    "e2e": "playwright test",
+    "test:e2e": "playwright test && npx tsx scripts/capture_evidence.ts",
     "test:ai": "vitest run tests/e2e/ai-agent --run"
   },
   "dependencies": {
@@ -49,6 +49,7 @@
     "eslint": "^9",
     "eslint-config-next": "15.5.4",
     "jsdom": "^27.0.0",
+    "puppeteer": "^24.25.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^3.2.4"

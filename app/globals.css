@@ -8,6 +8,13 @@
   --brand-gold: #cfa968;
   --brand-white: #ffffff;
   --brand-light: #cdd2c5;
+  /* Semantic tokens */
+  --surface: #ffffff;
+  --surface-muted: #f7f7f8;
+  --text: #0f172a;
+  --text-muted: #475569;
+  --border: #e2e8f0;
+  --focus-ring: #cfa968;
 }
 
 

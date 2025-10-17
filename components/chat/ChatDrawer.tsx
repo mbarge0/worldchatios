@@ -202,7 +202,7 @@ export default function ChatDrawer({ canvasId, open, onClose }: ChatDrawerProps)
 
     return (
         <aside
-            className="absolute top-0 right-0 h-full bg-white border-l border-gray-200 shadow-lg flex flex-col"
+            className="absolute top-0 right-0 h-full bg-[var(--surface)] border-l border-[var(--brand-gold)]/30 shadow-lg flex flex-col"
             style={{ width }}
             role="complementary"
             aria-label="AI Chat Drawer"
@@ -214,30 +214,30 @@ export default function ChatDrawer({ canvasId, open, onClose }: ChatDrawerProps)
                 aria-hidden
             />
             {/* Header */}
-            <div className="flex items-center justify-between px-3 py-2 border-b bg-white/95">
+            <div className="flex items-center justify-between px-3 py-2 border-b bg-[var(--brand-dark)] text-[var(--brand-white)]">
                 <div className="flex items-center gap-2 text-sm font-medium">
-                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-indigo-600 text-white text-xs">A</span>
+                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[var(--brand-gold)] text-[var(--brand-dark)] text-xs">A</span>
                     <span>Assistant</span>
                 </div>
                 <div className="flex items-center gap-2">
                     {/* Voice controls */}
-                    <button className={`p-1.5 rounded hover:bg-gray-100 ${voiceActive ? 'text-indigo-600' : ''}`} onClick={toggleVoice} title="Voice input (toggle)"><Mic className="w-4 h-4" /></button>
-                    <button className={`p-1.5 rounded hover:bg-gray-100 ${speechActive ? 'text-indigo-600' : ''}`} onClick={toggleSpeech} title="Speech output (toggle)"><Volume2 className="w-4 h-4" /></button>
-                    <button className="p-1.5 rounded hover:bg-gray-100" onClick={onClose} aria-label="Close chat drawer"><X className="w-4 h-4" /></button>
+                    <button className={`p-1.5 rounded hover:bg-white/10 ${voiceActive ? 'text-[var(--brand-gold)]' : ''}`} onClick={toggleVoice} title="Voice input (toggle)"><Mic className="w-4 h-4" /></button>
+                    <button className={`p-1.5 rounded hover:bg-white/10 ${speechActive ? 'text-[var(--brand-gold)]' : ''}`} onClick={toggleSpeech} title="Speech output (toggle)"><Volume2 className="w-4 h-4" /></button>
+                    <button className="p-1.5 rounded hover:bg-white/10" onClick={onClose} aria-label="Close chat drawer"><X className="w-4 h-4" /></button>
                 </div>
             </div>
             {/* Messages */}
-            <div className="flex-1 overflow-auto p-3 space-y-2">
+            <div className="flex-1 overflow-auto p-3 space-y-2 bg-[var(--surface)]">
                 {messages.map((m, idx) => (
                     <div key={idx} className={m.role === 'assistant' ? 'flex justify-start' : 'flex justify-end'}>
-                        <div className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${m.role === 'assistant' ? 'bg-slate-100 text-slate-900' : 'bg-indigo-600 text-white'}`}>
+                        <div className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${m.role === 'assistant' ? 'bg-[var(--surface-muted)] text-[var(--text)]' : 'bg-[var(--brand-gold)] text-[var(--brand-dark)]'}`}>
                             {m.content}
                         </div>
                     </div>
                 ))}
             </div>
             {/* Input */}
-            <div className="border-t p-2 bg-white">
+            <div className="border-t p-2 bg-[var(--surface)]">
                 <div className="flex items-center gap-2">
                     <input
                         type="text"
@@ -245,7 +245,7 @@ export default function ChatDrawer({ canvasId, open, onClose }: ChatDrawerProps)
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
                         placeholder="Ask the assistant…"
-                        className="flex-1 h-10 px-3 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="flex-1 h-10 px-3 rounded border border-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-gold)]"
                         disabled={sending}
                     />
                     <Button variant="primary" onClick={handleSend} disabled={sending || !input.trim()} title="Send">

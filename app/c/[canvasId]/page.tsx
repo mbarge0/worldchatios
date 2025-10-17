@@ -11,7 +11,7 @@ import { usePresence } from '@/lib/hooks/usePresence'
 import { useCanvasStore } from '@/lib/store/canvas-store'
 import dynamic from 'next/dynamic'
 import { useParams } from 'next/navigation'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const Canvas = dynamic(() => import('@/components/canvas/Canvas'), { ssr: false })
 
@@ -21,6 +21,19 @@ export default function CanvasPage() {
     const { selectedIds, nodes, removeSelectedNodes, setNodes } = useCanvasStore()
     const [showGrid, setShowGrid] = useState<boolean>(false)
     const [chatOpen, setChatOpen] = useState<boolean>(false)
+    // Test-only hook to open/toggle chat programmatically (used by E2E)
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+        const w = window as any
+        const toggle = () => setChatOpen((v: boolean) => !v)
+        w.__ccToggleChat = toggle
+        const onEvt = () => toggle()
+        window.addEventListener('cc:toggle-chat', onEvt)
+        return () => {
+            try { delete w.__ccToggleChat } catch { /* ignore */ }
+            window.removeEventListener('cc:toggle-chat', onEvt)
+        }
+    }, [])
 
     const participants = Object.values(participantsRef.current || {}).sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''))
     const presenceUsers = participants.map((p) => ({
@@ -34,11 +47,14 @@ export default function CanvasPage() {
     const handleAddText = async () => {
         if (!canvasId) return
         const id = (typeof crypto !== 'undefined' && (crypto as any).randomUUID) ? (crypto as any).randomUUID() : Math.random().toString(36).slice(2)
+        // Spawn at viewport center under current zoom
+        const centerX = (window.innerWidth / 2 - (stageRef.current?.getStage?.()?.x() || 0)) / (stageRef.current?.getStage?.()?.scaleX() || 1)
+        const centerY = (window.innerHeight / 2 - (stageRef.current?.getStage?.()?.y() || 0)) / (stageRef.current?.getStage?.()?.scaleY() || 1)
         const payload: any = {
             id,
             type: 'text',
-            x: 100,
-            y: 100,
+            x: Math.round(centerX - 100),
+            y: Math.round(centerY - 20),
             width: 200,
             height: 40,
             rotation: 0,
@@ -59,11 +75,13 @@ export default function CanvasPage() {
     const handleAddRect = async () => {
         if (!canvasId) return
         const id = (typeof crypto !== 'undefined' && (crypto as any).randomUUID) ? (crypto as any).randomUUID() : Math.random().toString(36).slice(2)
+        const centerX = (window.innerWidth / 2 - (stageRef.current?.getStage?.()?.x() || 0)) / (stageRef.current?.getStage?.()?.scaleX() || 1)
+        const centerY = (window.innerHeight / 2 - (stageRef.current?.getStage?.()?.y() || 0)) / (stageRef.current?.getStage?.()?.scaleY() || 1)
         const payload: any = {
             id,
             type: 'rect',
-            x: 120,
-            y: 120,
+            x: Math.round(centerX - 70),
+            y: Math.round(centerY - 50),
             width: 140,
             height: 100,
             rotation: 0,
@@ -191,9 +209,9 @@ export default function CanvasPage() {
     return (
         <AuthGuard>
             <div data-testid="canvas-shell" className="min-h-screen flex flex-col bg-slate-50">
-                <header data-testid="canvas-header" className="grid grid-cols-[1fr_auto_1fr] items-center border-b bg-white/90 backdrop-blur px-6 h-[52px] lg:h-14 shadow-sm">
+                <header data-testid="canvas-header" className="grid grid-cols-[1fr_auto_1fr] items-center border-b bg-[var(--brand-dark)] text-[var(--brand-white)] backdrop-blur px-6 h-[52px] lg:h-14 shadow-sm border-[var(--brand-gold)]/30">
                     <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-indigo-600" />
+                        <div className="w-2 h-2 rounded-full bg-[var(--brand-gold)]" />
                         <h1 className="text-xl font-semibold">CollabCanvas</h1>
                     </div>
                     <div className="flex items-center justify-center">
@@ -208,9 +226,10 @@ export default function CanvasPage() {
                     data-testid="canvas-main"
                     className="flex-1 relative overflow-hidden"
                 >
-                    {/* Bottom docked toolbar */}
-                    <div className="absolute left-0 right-0 bottom-6 z-10 flex items-center justify-center">
+                    {/* Left-docked toolbar (13B-1) */}
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 z-30 flex items-center pointer-events-auto">
                         <Toolbar
+                            orientation="vertical"
                             onToggleChat={() => setChatOpen((v: boolean) => !v)}
                             onAddRect={handleAddRect}
                             onAddText={handleAddText}
@@ -230,7 +249,7 @@ export default function CanvasPage() {
                     <div className="absolute inset-0 bg-white z-0" data-testid="canvas-stage-wrapper">
                         {showGrid && (
                             <div aria-hidden className="pointer-events-none absolute inset-0"
-                                style={{ backgroundImage: `linear-gradient(to right, rgba(229,231,235,0.6) 1px, transparent 1px), linear-gradient(to bottom, rgba(229,231,235,0.6) 1px, transparent 1px)`, backgroundSize: '8px 8px' }}
+                                style={{ backgroundImage: `linear-gradient(to right, rgba(229,231,235,0.45) 1px, transparent 1px), linear-gradient(to bottom, rgba(229,231,235,0.45) 1px, transparent 1px)`, backgroundSize: '8px 8px' }}
                             />
                         )}
                         <Canvas stageRef={stageRef} />
