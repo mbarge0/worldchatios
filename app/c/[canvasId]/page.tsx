@@ -209,7 +209,7 @@ export default function CanvasPage() {
     return (
         <AuthGuard>
             <div data-testid="canvas-shell" className="min-h-screen flex flex-col bg-slate-50">
-                <header data-testid="canvas-header" className="grid grid-cols-[1fr_auto_1fr] items-center border-b bg-[var(--brand-dark)] text-[var(--brand-white)] backdrop-blur px-6 h-[52px] lg:h-14 shadow-sm border-[var(--brand-gold)]/30">
+                <header data-testid="canvas-header" className="grid grid-cols-[1fr_auto_1fr] items-center bg-[var(--surface)] text-[var(--brand-dark)] px-6 h-[52px] lg:h-14 shadow-sm border-b-2 border-[var(--brand-gold)]/70">
                     <div className="flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-[var(--brand-gold)]" />
                         <h1 className="text-xl font-semibold">CollabCanvas</h1>
