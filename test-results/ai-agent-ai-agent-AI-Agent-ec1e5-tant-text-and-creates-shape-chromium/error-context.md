@@ -76,7 +76,7 @@
               - img [ref=e132]
         - generic [ref=e135]:
           - generic [ref=e137]: Create a square
-          - generic [ref=e139]: I've created a shape.
+          - generic [ref=e139]: "I've created a circle at (100, 100) in #cfa968."
           - generic [ref=e141]: "I've created a circle at (100, 100) in #cfa968."
         - generic [ref=e143]:
           - textbox "Ask the assistant…" [ref=e144]
