@@ -1,0 +1,14 @@
+[
+  {
+    "route": "/c/test-canvas?auto=dev",
+    "url": "http://localhost:3000/c/test-canvas?auto=dev",
+    "status": "fail",
+    "error": "page.goto: Timeout 60000ms exceeded.\nCall log:\n  - navigating to \"http://localhost:3000/c/test-canvas?auto=dev\", waiting until \"networkidle\"\n"
+  },
+  {
+    "route": "/c/default?auto=dev",
+    "url": "http://localhost:3000/c/default?auto=dev",
+    "status": "fail",
+    "error": "page.goto: Timeout 60000ms exceeded.\nCall log:\n  - navigating to \"http://localhost:3000/c/default?auto=dev\", waiting until \"networkidle\"\n"
+  }
+]

@@ -1,0 +1,20 @@
+[
+  {
+    "route": "/login?auto=dev",
+    "name": "login_screen",
+    "canvasReady": false,
+    "loginSucceeded": false,
+    "chatVisible": false,
+    "hasVideo": true,
+    "status": "partial"
+  },
+  {
+    "route": "/c/default?auto=dev",
+    "name": "canvas_app",
+    "canvasReady": false,
+    "loginSucceeded": false,
+    "chatVisible": false,
+    "hasVideo": true,
+    "status": "partial"
+  }
+]

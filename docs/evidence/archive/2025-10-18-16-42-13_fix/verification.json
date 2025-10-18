@@ -1,0 +1,17 @@
+[
+  {
+    "url": "/",
+    "screenshot": "/Users/matthewbarge/DevProjects/collab-canvas/docs/evidence/archive/2025-10-18-16-42-13_fix/.png",
+    "status": "success"
+  },
+  {
+    "url": "/c/test-canvas?auto=dev",
+    "screenshot": "/Users/matthewbarge/DevProjects/collab-canvas/docs/evidence/archive/2025-10-18-16-42-13_fix/c_test-canvas_auto_dev.png",
+    "status": "success"
+  },
+  {
+    "url": "/c/default?auto=dev?auto=dev",
+    "screenshot": "/Users/matthewbarge/DevProjects/collab-canvas/docs/evidence/archive/2025-10-18-16-42-13_fix/c_default_auto_dev_auto_dev.png",
+    "status": "success"
+  }
+]

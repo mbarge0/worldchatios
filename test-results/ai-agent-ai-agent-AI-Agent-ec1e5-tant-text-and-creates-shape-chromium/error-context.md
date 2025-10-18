@@ -1,7 +1,7 @@
 # Page snapshot
 
 ```yaml
-- generic [active] [ref=e1]:
+- generic [ref=e1]:
   - generic [ref=e6] [cursor=pointer]:
     - button "Open Next.js Dev Tools" [ref=e7]:
       - img [ref=e8]
@@ -19,77 +19,70 @@
       - generic "Presence avatars" [ref=e26]:
         - generic "Avatar for undefined" [ref=e29]: "?"
         - generic "Avatar for undefined" [ref=e32]: "?"
-        - generic "Dev" [ref=e33]:
-          - generic "Avatar for Dev" [ref=e35]: D
-        - generic "Dev" [ref=e36]:
-          - generic "Avatar for Dev" [ref=e38]: D
-        - generic "Dev" [ref=e39]:
-          - generic "Avatar for Dev" [ref=e41]: D
-        - generic "Dev" [ref=e42]:
-          - generic "Avatar for Dev" [ref=e44]: D
-        - generic "Dev" [ref=e45]:
-          - generic "Avatar for Dev" [ref=e47]: D
-        - generic "Mbarge0" [ref=e48]:
-          - generic "Avatar for Mbarge0" [ref=e50]: M
-        - generic "Mbarge0" [ref=e51]:
-          - generic "Avatar for Mbarge0" [ref=e53]: M
-        - generic "Mbarge0" [ref=e54]:
-          - generic "Avatar for Mbarge0" [ref=e56]: M
-        - generic "Mbarge0" [ref=e57]:
-          - generic "Avatar for Mbarge0" [ref=e59]: M
-        - generic "Mylesethan93" [ref=e60]:
-          - generic "Avatar for Mylesethan93" [ref=e62]: M
-      - generic [ref=e63]:
-        - generic [ref=e64]:
-          - generic "Connection status" [ref=e65]:
-            - generic [ref=e66]: Connected
-          - generic [ref=e68]: dev@local.test
-          - button "Logout" [ref=e69] [cursor=pointer]
-        - generic [ref=e70]: "ID: default"
-    - main [ref=e71]:
-      - toolbar "Canvas toolbar" [ref=e73]:
-        - 'button "Toggle Chat (Ctrl+`)" [ref=e74] [cursor=pointer]':
+        - generic "Avatar for undefined" [ref=e35]: "?"
+        - generic "Avatar for undefined" [ref=e38]: "?"
+        - generic "Avatar for undefined" [ref=e41]: "?"
+        - generic "Avatar for undefined" [ref=e44]: "?"
+        - generic "Avatar for undefined" [ref=e47]: "?"
+        - generic "Avatar for undefined" [ref=e50]: "?"
+        - generic "Dev" [ref=e51]:
+          - generic "Avatar for Dev" [ref=e53]: D
+        - generic "Dev" [ref=e54]:
+          - generic "Avatar for Dev" [ref=e56]: D
+        - generic "Mylesethan93" [ref=e57]:
+          - generic "Avatar for Mylesethan93" [ref=e59]: M
+      - generic [ref=e60]:
+        - generic [ref=e61]:
+          - generic "Connection status" [ref=e62]:
+            - generic [ref=e63]: Connected
+          - generic [ref=e65]: dev@local.test
+          - button "Logout" [ref=e66] [cursor=pointer]
+        - generic [ref=e67]: "ID: default"
+    - main [ref=e68]:
+      - toolbar "Canvas toolbar" [ref=e70]:
+        - 'button "Toggle Chat (Ctrl+`)" [ref=e71] [cursor=pointer]':
+          - img [ref=e72]
+        - button "+ Rect" [ref=e74] [cursor=pointer]:
           - img [ref=e75]
-        - button "+ Rect" [ref=e77] [cursor=pointer]:
-          - img [ref=e78]
           - text: + Rect
-        - button "+ Text" [ref=e80] [cursor=pointer]:
-          - img [ref=e81]
+        - button "+ Text" [ref=e77] [cursor=pointer]:
+          - img [ref=e78]
           - text: + Text
-        - button "Dup" [ref=e84] [cursor=pointer]
-        - button "Del" [ref=e85] [cursor=pointer]
-        - button "Grid (G)" [ref=e87] [cursor=pointer]:
-          - img [ref=e88]
-        - button "Align ▾" [ref=e92] [cursor=pointer]
-        - button "Bring Forward" [ref=e94] [cursor=pointer]:
-          - img [ref=e95]
-        - button "Send Backward" [ref=e99] [cursor=pointer]:
-          - img [ref=e100]
-        - button "Export PNG (2x)" [ref=e105] [cursor=pointer]:
-          - img [ref=e106]
-        - button "Sel" [ref=e109] [cursor=pointer]
-        - button "SV" [ref=e110] [cursor=pointer]
-        - button "RL" [ref=e111] [cursor=pointer]
-      - complementary "AI Chat Drawer" [ref=e114]:
-        - generic [ref=e116]:
-          - generic [ref=e117]:
-            - generic [ref=e118]: A
-            - generic [ref=e119]: Assistant
-          - generic [ref=e120]:
-            - button "Voice input (toggle)" [ref=e121]:
-              - img [ref=e122]
-            - button "Speech output (toggle)" [ref=e125]:
-              - img [ref=e126]
-            - button "Close chat drawer" [ref=e130]:
-              - img [ref=e131]
-        - generic [ref=e134]:
-          - generic [ref=e136]: Create a square
-          - generic [ref=e138]: I've created a shape.
-        - generic [ref=e140]:
-          - textbox "Ask the assistant…" [disabled] [ref=e141]
-          - button "Send" [disabled] [ref=e142]:
-            - img [ref=e143]
-          - button "Undo last AI action" [ref=e146] [cursor=pointer]:
-            - img [ref=e147]
-  - alert [ref=e150]
+        - button "Dup" [ref=e81] [cursor=pointer]
+        - button "Del" [ref=e82] [cursor=pointer]
+        - button "Grid (G)" [ref=e84] [cursor=pointer]:
+          - img [ref=e85]
+        - button "Align ▾" [ref=e89] [cursor=pointer]
+        - button "Bring Forward" [ref=e91] [cursor=pointer]:
+          - img [ref=e92]
+        - button "Send Backward" [ref=e96] [cursor=pointer]:
+          - img [ref=e97]
+        - button "Export PNG (2x)" [ref=e102] [cursor=pointer]:
+          - img [ref=e103]
+        - button "Sel" [ref=e106] [cursor=pointer]
+        - button "SV" [ref=e107] [cursor=pointer]
+        - button "RL" [ref=e108] [cursor=pointer]
+      - complementary "AI Chat Drawer" [ref=e115]:
+        - generic [ref=e117]:
+          - generic [ref=e118]:
+            - generic [ref=e119]: A
+            - generic [ref=e120]: Assistant
+          - generic [ref=e121]:
+            - button "Voice input (toggle)" [ref=e122]:
+              - img [ref=e123]
+            - button "Speech output (toggle)" [ref=e126]:
+              - img [ref=e127]
+            - button "Close chat drawer" [ref=e131]:
+              - img [ref=e132]
+        - generic [ref=e135]:
+          - generic [ref=e137]: Create a square
+          - generic [ref=e139]: "I've created a circle at (100, 100) in #cfa968."
+          - generic [ref=e141]: "I've created a circle at (100, 100) in #cfa968."
+        - generic [ref=e143]:
+          - textbox "Ask the assistant…" [ref=e144]
+          - button "Send" [disabled] [ref=e145]:
+            - img [ref=e146]
+          - button "Undo last AI action" [ref=e149] [cursor=pointer]:
+            - img [ref=e150]
+  - alert [ref=e153]
 ```

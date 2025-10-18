@@ -1,0 +1,18 @@
+[
+  {
+    "route": "/login?auto=dev",
+    "canvasReady": false,
+    "chatVisible": false,
+    "loginSucceeded": false,
+    "hasVideo": false,
+    "status": "fail"
+  },
+  {
+    "route": "/c/default?auto=dev",
+    "canvasReady": false,
+    "chatVisible": false,
+    "loginSucceeded": false,
+    "hasVideo": false,
+    "status": "fail"
+  }
+]

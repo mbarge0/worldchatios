@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid'
 export type AlignOp = 'left' | 'centerX' | 'right' | 'top' | 'middleY' | 'bottom' | 'distributeH' | 'distributeV'
 export type ZIndexOp = 'front' | 'back' | 'forward' | 'backward'
 
-export async function createShape(canvasId: string, shape: any): Promise<void> {
+export async function createShape(canvasId: string, shape: any): Promise<any> {
     if (!canvasId) throw new Error('[createShape] Missing canvasId')
     if (!shape || typeof shape !== 'object') {
         // eslint-disable-next-line no-console
@@ -15,9 +15,11 @@ export async function createShape(canvasId: string, shape: any): Promise<void> {
     }
     if (!shape.id) shape.id = uuidv4()
     await fsCreateShape(canvasId, shape)
+    // Return created payload so caller can summarize (type, position, color)
+    return shape
 }
 
-export async function createText(canvasId: string, shape: any): Promise<void> {
+export async function createText(canvasId: string, shape: any): Promise<any> {
     if (!canvasId) throw new Error('[createText] Missing canvasId')
     if (!shape || typeof shape !== 'object') {
         // eslint-disable-next-line no-console
@@ -26,6 +28,8 @@ export async function createText(canvasId: string, shape: any): Promise<void> {
     }
     if (!shape.id) shape.id = uuidv4()
     await fsCreateShape(canvasId, shape)
+    // Return created payload so caller can summarize (text content)
+    return shape
 }
 
 export async function moveShape(canvasId: string, shapeId: string, x: number, y: number): Promise<void> {

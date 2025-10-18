@@ -1,0 +1,20 @@
+[
+  {
+    "route": "/",
+    "url": "http://localhost:3000/",
+    "screenshot": "/Users/matthewbarge/DevProjects/collab-canvas/docs/evidence/archive/2025-10-18-17-46-56_fix/.png",
+    "status": "partial"
+  },
+  {
+    "route": "/c/test-canvas?auto=dev",
+    "url": "http://localhost:3000/c/test-canvas?auto=dev",
+    "status": "fail",
+    "error": "page.goto: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/c/test-canvas?auto=dev\", waiting until \"networkidle\"\u001b[22m\n"
+  },
+  {
+    "route": "/c/default?auto=dev",
+    "url": "http://localhost:3000/c/default?auto=dev",
+    "status": "fail",
+    "error": "page.goto: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/c/default?auto=dev\", waiting until \"networkidle\"\u001b[22m\n"
+  }
+]
