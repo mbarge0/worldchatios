@@ -96,7 +96,7 @@ http://localhost:3000
 ## Folder Structure
 
 ```
-gauntletstartertemplate/
+foundrycore/
 ├── app/                  # Next.js App Router (pages, routes, api)
 ├── components/           # Reusable UI components (Shadcn + Tailwind)
 ├── config/               # Environment, AI, and database configs

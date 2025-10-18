@@ -125,6 +125,8 @@ Sentry
 AI Integration
 OpenAI API (planned post-MVP)
 
+⸻
+
 🧭 Development Process
 
 CollabCanvas was built using the Gauntlet AI System methodology, featuring:
