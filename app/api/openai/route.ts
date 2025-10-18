@@ -186,7 +186,7 @@ export async function POST(req: NextRequest) {
             if (!args.canvasId) args.canvasId = canvasId
             const fn = registeredTools[name]
             if (typeof fn === 'function') {
-                // Execute tool
+                // Execute tool and capture the returned payload for richer summaries
                 const result = await (fn as any)(...Object.values(args))
                 results.push({ call: { name, arguments: args }, result })
             }
@@ -223,8 +223,25 @@ export async function POST(req: NextRequest) {
                     zIndexUpdate: 'updated z-index',
                     getCanvasState: 'retrieved canvas state',
                 }
-                const actions = Array.from(new Set(results.map(r => verbs[r.call.name] || r.call.name)))
-                text = actions.length ? `I've ${actions.join(', ')}.` : ''
+                // Prefer a richer, context-aware summary when we have payloads
+                const latest = results[results.length - 1]
+                if (latest) {
+                    if (latest.call.name === 'createShape') {
+                        const s: any = latest.result || latest.call.arguments?.shape || {}
+                        const kind = String(s?.type || 'shape')
+                        const x = Number(s?.x ?? 0), y = Number(s?.y ?? 0)
+                        const color = String(s?.fill || s?.stroke || '#000')
+                        text = `I've created a ${kind} at (${Math.round(x)}, ${Math.round(y)}) in ${color}.`
+                    } else if (latest.call.name === 'createText') {
+                        const s: any = latest.result || latest.call.arguments?.shape || {}
+                        const content = String(s?.text || '').trim()
+                        text = content ? `I've created a text that says "${content}".` : 'I\'ve created a text.'
+                    }
+                }
+                if (!text) {
+                    const actions = Array.from(new Set(results.map(r => verbs[r.call.name] || r.call.name)))
+                    text = actions.length ? `I've ${actions.join(', ')}.` : ''
+                }
             }
         }
         // eslint-disable-next-line no-console
