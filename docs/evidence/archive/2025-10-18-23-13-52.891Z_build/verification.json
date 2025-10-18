@@ -1,0 +1,26 @@
+[
+  {
+    "route": "/login?auto=dev",
+    "url": "http://localhost:3000/login?auto=dev",
+    "name": "login_screen",
+    "screenshot": "/Users/matthewbarge/DevProjects/collab-canvas/docs/evidence/latest/screenshots/login_screen.png",
+    "loginSucceeded": false,
+    "canvasReady": false,
+    "chatVisible": false,
+    "hasVideo": true,
+    "videoBytes": 937385,
+    "status": "partial"
+  },
+  {
+    "route": "/c/default?auto=dev",
+    "url": "http://localhost:3000/c/default?auto=dev",
+    "name": "canvas_app",
+    "screenshot": "/Users/matthewbarge/DevProjects/collab-canvas/docs/evidence/latest/screenshots/canvas_app.png",
+    "loginSucceeded": false,
+    "canvasReady": false,
+    "chatVisible": false,
+    "hasVideo": true,
+    "videoBytes": 1343341,
+    "status": "fail"
+  }
+]
