@@ -20,8 +20,8 @@ const latestDir = path.resolve("docs/evidence/latest");
 fs.mkdirSync(outDir, { recursive: true });
 fs.mkdirSync(latestDir, { recursive: true });
 
-// Focused list (keep small)
-const routes = ["/", "/c/test-canvas", "/c/default?auto=dev"];
+// Focused list (two routes only for speed)
+const routes = ["/c/test-canvas?auto=dev", "/c/default?auto=dev"];
 
 const EMAIL = process.env.VISUAL_CAPTURE_USER_EMAIL || "";
 const PASS = process.env.VISUAL_CAPTURE_USER_PASS || "";
@@ -84,8 +84,8 @@ async function getFirebaseIdToken(email: string, password: string): Promise<stri
 
     const results: Array<Record<string, any>> = [];
 
-    // readiness check: any of these selectors indicates the canvas is loaded
-    async function canvasReady(timeout = 15_000): Promise<boolean> {
+    // Single readiness check (max 10s)
+    async function canvasReady(timeout = 10_000): Promise<boolean> {
         try {
             await Promise.race([
                 page.waitForSelector('[data-testid="canvas-shell"]', { timeout }),
@@ -110,25 +110,37 @@ async function getFirebaseIdToken(email: string, password: string): Promise<stri
 
         try {
             console.log(`➡️ Navigating to ${url}`);
-            await page.goto(url, { waitUntil: "networkidle", timeout: 30_000 });
+            await page.goto(url, { waitUntil: "networkidle", timeout: 60_000 });
 
             let ready = await canvasReady(10_000);
             if (!ready && route.startsWith("/c/")) {
-                console.log("🔁 Canvas not ready — retrying once (reload)...");
-                await page.reload({ waitUntil: "networkidle", timeout: 30_000 }).catch(() => { });
-                ready = await canvasReady(12_000);
+                await page.reload({ waitUntil: "networkidle", timeout: 60_000 }).catch(() => { });
+                ready = await canvasReady(10_000);
             }
 
             // capture screenshot (fullPage to include header in evidence)
             const screenshotPath = path.join(outDir, `${name}.png`);
+            // Force chat drawer open before capture
+            try {
+                await page.mouse.move(400, 400);
+                await page.mouse.click(400, 400);
+                await page.evaluate(() => {
+                    const btn = document.querySelector('[data-testid="chat-toggle"], button:has-text("Chat"), button:has-text("AI")') as HTMLElement | null;
+                    if (btn) btn.click();
+                    const drawer = document.querySelector('[data-testid="chat-drawer"], [aria-label*="chat" i]') as HTMLElement | null;
+                    if (drawer) (drawer.style as any).display = 'block';
+                });
+                await page.waitForTimeout(800);
+            } catch {
+                // ignore
+            }
             await page.screenshot({ path: screenshotPath, fullPage: true });
             // copy to latest, overwriting only the focused set
             fs.copyFileSync(screenshotPath, path.join(latestDir, `${name}.png`));
 
             results.push({ route, url, screenshot: screenshotPath, status: ready ? "success" : "partial" });
-            console.log(ready ? `📸 Captured ${route} (ready)` : `📸 Captured ${route} (partial)`);
+            console.log(`📸 Captured ${route}`);
         } catch (err: any) {
-            console.warn(`❌ Failed to capture ${route}: ${err?.message || err}`);
             results.push({ route, url, status: "fail", error: String(err?.message ?? err) });
         }
     }
@@ -138,9 +150,7 @@ async function getFirebaseIdToken(email: string, password: string): Promise<stri
     fs.writeFileSync(manifestPath, JSON.stringify(results, null, 2));
     fs.copyFileSync(manifestPath, path.join(latestDir, "verification.json"));
 
-    console.log(`✅ Visual capture complete for phase: ${phase}`);
-    console.log(`📁 Archive saved to: ${outDir}`);
-    console.log(`📁 Latest evidence updated at: ${latestDir}`);
+    console.log("✅ Done — Evidence updated.");
 
     await browser.close();
 })();

@@ -1,0 +1,20 @@
+[
+  {
+    "route": "/",
+    "url": "http://localhost:3000/",
+    "screenshot": "/Users/matthewbarge/DevProjects/collab-canvas/docs/evidence/archive/2025-10-18-18-10-18_fix/.png",
+    "status": "partial"
+  },
+  {
+    "route": "/c/test-canvas?auto=dev",
+    "url": "http://localhost:3000/c/test-canvas?auto=dev",
+    "screenshot": "/Users/matthewbarge/DevProjects/collab-canvas/docs/evidence/archive/2025-10-18-18-10-18_fix/c_test-canvas_auto_dev.png",
+    "status": "success"
+  },
+  {
+    "route": "/c/default?auto=dev",
+    "url": "http://localhost:3000/c/default?auto=dev",
+    "screenshot": "/Users/matthewbarge/DevProjects/collab-canvas/docs/evidence/archive/2025-10-18-18-10-18_fix/c_default_auto_dev.png",
+    "status": "success"
+  }
+]

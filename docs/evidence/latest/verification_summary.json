@@ -1,0 +1,16 @@
+[
+  {
+    "route": "/c/test-canvas?auto=dev",
+    "canvasReady": true,
+    "chatVisible": false,
+    "hasVideo": true,
+    "status": "partial"
+  },
+  {
+    "route": "/c/default?auto=dev",
+    "canvasReady": true,
+    "chatVisible": false,
+    "hasVideo": true,
+    "status": "partial"
+  }
+]
