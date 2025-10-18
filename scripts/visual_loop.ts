@@ -35,6 +35,8 @@ async function main() {
 
     // 4) Print compact report
     let allPass = true
+    let shotCount = 0
+    let vidCount = 0
     for (const item of summary) {
         const route: string = item.route || 'unknown'
         const canvasReady: boolean = !!item.canvasReady
@@ -43,6 +45,10 @@ async function main() {
         const videoName = encodeURIComponent(route) + '.webm'
         const videoPath = path.join('docs', 'evidence', 'latest', 'videos', videoName)
         const videoOk = fileExists(videoPath)
+        const shotName = encodeURIComponent(route) + '.png'
+        const shotPath = path.join('docs', 'evidence', 'latest', 'screenshots', shotName)
+        if (fileExists(shotPath)) shotCount++
+        if (videoOk) vidCount++
 
         const canvasMark = canvasReady ? '✅' : '❌'
         const chatMark = chatVisible ? '✅' : '❌'
@@ -53,8 +59,20 @@ async function main() {
         if (!canvasReady || !chatVisible) allPass = false
     }
 
+    // Delete stray evidence directly under latest/
+    try {
+        const latestRoot = path.join('docs', 'evidence', 'latest')
+        for (const entry of fs.readdirSync(latestRoot)) {
+            if (entry.endsWith('.png') || entry.endsWith('.webm')) {
+                try { fs.rmSync(path.join(latestRoot, entry), { force: true }) } catch { }
+            }
+        }
+        console.log('🧹 Cleaned up stale evidence files.')
+    } catch { }
+
     // 5) Exit code and messaging
     const seconds = ((Date.now() - start) / 1000).toFixed(1)
+    console.log(`\n📦 Saved: ${shotCount} screenshots, ${vidCount} videos`)
     if (!allPass) {
         console.log('\n🚑 Visual verification failed for one or more routes. Entering surgical fix loop is recommended.')
         console.log(`⏱️ Total runtime: ${seconds}s`)

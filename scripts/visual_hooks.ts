@@ -2,7 +2,7 @@ import type { Page } from "playwright";
 
 // Project-specific hooks for CollabCanvas
 export const visualHooks = {
-    routes: ["/c/test-canvas?auto=dev", "/c/default?auto=dev"],
+    routes: ["/login?auto=dev", "/c/default?auto=dev"],
     // Match actual DOM in our app/c/[canvasId]/page.tsx and ChatDrawer
     readinessSelectors: [
         "[data-testid='canvas-shell']",

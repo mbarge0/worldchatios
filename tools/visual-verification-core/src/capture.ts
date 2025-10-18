@@ -22,7 +22,14 @@ export async function captureVisuals(config: VisualConfig, hooks: VisualHooks) {
     const latestDir = config.latestDir || path.resolve("docs/evidence/latest");
 
     fs.mkdirSync(outDir, { recursive: true });
+    // Clean latest folder to keep only newest evidence
     fs.mkdirSync(latestDir, { recursive: true });
+    try {
+        for (const entry of fs.readdirSync(latestDir)) {
+            const p = path.join(latestDir, entry);
+            try { fs.rmSync(p, { recursive: true, force: true }); } catch { }
+        }
+    } catch { }
 
     const browser = await chromium.launch({ headless: true });
     const videoDirArchive = path.join(outDir, "videos");
@@ -33,7 +40,7 @@ export async function captureVisuals(config: VisualConfig, hooks: VisualHooks) {
     const context = await browser.newContext({
         recordVideo: { dir: videoDirArchive, size: { width: 1280, height: 720 } },
     });
-    const page = await context.newPage();
+    // page will be created per-route to ensure recordVideo flush
 
     const results: Array<Record<string, any>> = [];
 
@@ -46,11 +53,24 @@ export async function captureVisuals(config: VisualConfig, hooks: VisualHooks) {
 
     const startAll = Date.now();
 
+    function deriveName(url: string, routePath: string): string {
+        if (url.includes('/login')) return 'login_screen';
+        if (url.includes('/c/')) return 'canvas_app';
+        const slug = routePath.replace(/[/?=&]/g, '_').replace(/_+/g, '_').replace(/^_/, '');
+        return slug || 'route_custom';
+    }
+
     for (const route of hooks.routes) {
         const url = `${config.baseUrl}${route}`;
-        console.log(`➡️ Navigating to ${url}`);
+        const name = deriveName(url, route);
+        if (name === 'login_screen') console.log('🔐 Capturing Login Screen...');
+        else if (name === 'canvas_app') console.log('🎨 Capturing Canvas Application...');
+        else console.log(`➡️ Navigating to ${url}`);
 
         try {
+            const page = await context.newPage();
+            const consoleLogs: string[] = [];
+            page.on('console', (msg) => consoleLogs.push(msg.text()));
             await page.goto(url, { waitUntil: "domcontentloaded", timeout: config.timeouts?.goto ?? 20000 });
 
             // Wait for readiness
@@ -73,7 +93,6 @@ export async function captureVisuals(config: VisualConfig, hooks: VisualHooks) {
             }
 
             // Screenshot
-            const name = route.replace(/[/?=&]/g, "_").replace(/_+/g, "_").replace(/^_/, "");
             const screenshotPath = path.join(screenshotsDir, `${name}.png`);
             await page.screenshot({ path: screenshotPath, fullPage: true });
             fs.copyFileSync(screenshotPath, path.join(latestShots, `${name}.png`));
@@ -81,14 +100,88 @@ export async function captureVisuals(config: VisualConfig, hooks: VisualHooks) {
             // Short video capture: let it run ~5s then save
             await page.waitForTimeout(5000);
             const v = await page.video();
-            if (v) {
-                const vPath = await v.path();
-                const dest = path.join(latestVids, `${name}.webm`);
-                fs.copyFileSync(vPath, dest);
-                console.log(`🎥 Recorded 5s video for ${route}`);
+            const vPathPre = v ? await v.path() : undefined;
+            // --- Behavioral checks ---
+            let canvasReady = false;
+            let chatVisible = false;
+            let loginSucceeded: boolean | undefined = undefined;
+            let shapeCreated: boolean | undefined = undefined;
+            let chatResponded: boolean | undefined = undefined;
+            let chatLatencyMs: number | undefined = undefined;
+
+            try {
+                // Basic readiness checks
+                if (url.includes('/login')) {
+                    // Wait for any input; try to simulate basic auth flow
+                    try {
+                        await page.waitForSelector('input', { timeout: 8000 });
+                        const inputs = page.locator('input');
+                        const count = await inputs.count().catch(() => 0);
+                        if (count > 0) {
+                            await inputs.first().fill('dev@example.com').catch(() => { });
+                        }
+                        // Detect redirected canvas or Sign out button
+                        const redirected = await page.waitForSelector("[data-testid='canvas-shell']", { timeout: 2000 }).then(() => true).catch(() => false);
+                        const signout = await page.locator('button:has-text("Sign out")').isVisible().catch(() => false);
+                        loginSucceeded = redirected || signout;
+                    } catch { loginSucceeded = false }
+                }
+
+                if (url.includes('/c/')) {
+                    // Canvas ready
+                    canvasReady = await page.waitForSelector('.konvajs-content', { timeout: 8000 }).then(() => true).catch(() => false);
+                    // Click Rectangle if available
+                    const rectBtn = page.locator('button[title*="Rectangle" i]');
+                    if (await rectBtn.count()) {
+                        await rectBtn.first().click().catch(() => { });
+                        // Heuristic: rely on bridge logs for shape creation
+                        const startShape = Date.now();
+                        for (;;) {
+                            if (consoleLogs.some(t => t.includes('✅ Added square to canvas store') || t.includes('✅ Square rendered to canvas'))) { shapeCreated = true; break; }
+                            if (Date.now() - startShape > 3000) { shapeCreated = false; break; }
+                            await page.waitForTimeout(150);
+                        }
+                    } else {
+                        shapeCreated = false;
+                    }
+
+                    // Chat: ensure input, send message and measure latency
+                    chatVisible = await page.locator('[data-testid="chat-drawer"], [aria-label*="AI Chat Drawer" i]').isVisible().catch(() => false);
+                    const chatInput = page.locator('input[placeholder="Ask the assistant…"]');
+                    if (await chatInput.count()) {
+                        await chatInput.fill('create a square at (100,100)').catch(() => { });
+                        const t0 = Date.now();
+                        await chatInput.press('Enter').catch(() => { });
+                        try {
+                            await page.locator('text=/created .* (square|shape)/i').first().waitFor({ timeout: 8000 });
+                            chatResponded = true;
+                            chatLatencyMs = Date.now() - t0;
+                        } catch {
+                            chatResponded = false;
+                        }
+                    }
+                }
+            } catch { }
+
+            await page.close();
+            await new Promise((r) => setTimeout(r, 500));
+            if (vPathPre && fs.existsSync(vPathPre)) {
+                try {
+                    const stat = fs.statSync(vPathPre);
+                    if (stat.size > 10 * 1024) {
+                        const dest = path.join(latestVids, `${name}.webm`);
+                        fs.copyFileSync(vPathPre, dest);
+                        console.log(`🎥 Recorded 5s video for ${route}`);
+                    } else {
+                        console.warn(`⚠️ Incomplete video for ${name} (skipping copy).`);
+                    }
+                } catch { }
             }
 
-            results.push({ route, url, screenshot: screenshotPath, status: ready ? "success" : "partial" });
+            // Determine hasVideo from latest copy
+            const hasVideo = fs.existsSync(path.join(latestVids, `${name}.webm`)) && ((): boolean => { try { return fs.statSync(path.join(latestVids, `${name}.webm`)).size > 10 * 1024 } catch { return false } })();
+
+            results.push({ route, url, name, screenshot: path.join(latestShots, `${name}.png`), canvasReady: !!canvasReady, chatVisible: !!chatVisible, loginSucceeded, shapeCreated, chatResponded, chatLatencyMs, hasVideo, status: ready ? "success" : "partial" });
             console.log(`📸 Captured ${route} (${ready ? "ready" : "partial"})`);
         } catch (err: any) {
             results.push({ route, url, status: "fail", error: err.message });
