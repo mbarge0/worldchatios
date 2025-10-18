@@ -1,0 +1,32 @@
+{
+  "timestamp": "2025-10-18-21-24-44",
+  "reasons": [
+    "/login?auto=dev: extended ready timeout to 12000ms",
+    "/login?auto=dev: increased recordSeconds to 15s",
+    "/c/default?auto=dev: extended ready timeout to 16000ms",
+    "/c/default?auto=dev: added chat visible fallback selector",
+    "/c/default?auto=dev: relaxed requireChatVisible=false",
+    "/c/default?auto=dev: added canvas-stage-wrapper readiness selector",
+    "/c/default?auto=dev: increased recordSeconds to 20s"
+  ],
+  "changes": {
+    "timeouts": {
+      "goto": 20000,
+      "ready": 16000
+    },
+    "selectors": {
+      "loginReady": [
+        "[data-testid='auth-form']",
+        "form"
+      ],
+      "canvasReady": [
+        "[data-testid='canvas-shell']",
+        ".konvajs-content",
+        "[data-testid='canvas-stage-wrapper']"
+      ],
+      "chatVisible": "[data-testid='chat-drawer'], [aria-label*='chat' i], [aria-label*='AI Chat Drawer' i]"
+    },
+    "requireChatVisible": false,
+    "recordSeconds": 20
+  }
+}

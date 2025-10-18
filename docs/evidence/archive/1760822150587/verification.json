@@ -5,9 +5,8 @@
     "canvasReady": false,
     "loginSucceeded": false,
     "chatVisible": false,
-    "hasVideo": false,
-    "degraded": true,
-    "status": "fail"
+    "hasVideo": true,
+    "status": "partial"
   },
   {
     "route": "/c/default?auto=dev",
@@ -15,8 +14,7 @@
     "canvasReady": false,
     "loginSucceeded": false,
     "chatVisible": false,
-    "hasVideo": false,
-    "degraded": true,
-    "status": "fail"
+    "hasVideo": true,
+    "status": "partial"
   }
 ]

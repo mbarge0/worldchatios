@@ -37,11 +37,6 @@ export async function captureVisuals(config: VisualConfig, hooks: VisualHooks) {
     fs.mkdirSync(videoDirArchive, { recursive: true });
     fs.mkdirSync(videoDirLatest, { recursive: true });
 
-    const context = await browser.newContext({
-        recordVideo: { dir: videoDirArchive, size: { width: 1280, height: 720 } },
-    });
-    // page will be created per-route to ensure recordVideo flush
-
     const results: Array<Record<string, any>> = [];
 
     const screenshotsDir = path.join(outDir, "screenshots");
@@ -49,7 +44,7 @@ export async function captureVisuals(config: VisualConfig, hooks: VisualHooks) {
     const latestVids = videoDirLatest;
     fs.mkdirSync(screenshotsDir, { recursive: true });
     fs.mkdirSync(latestShots, { recursive: true });
-    if (config.video) fs.mkdirSync(latestVids, { recursive: true });
+    fs.mkdirSync(latestVids, { recursive: true });
 
     const startAll = Date.now();
 
@@ -68,121 +63,94 @@ export async function captureVisuals(config: VisualConfig, hooks: VisualHooks) {
         else console.log(`➡️ Navigating to ${url}`);
 
         try {
-            const page = await context.newPage();
-            const consoleLogs: string[] = [];
-            page.on('console', (msg) => consoleLogs.push(msg.text()));
-            await page.goto(url, { waitUntil: "domcontentloaded", timeout: config.timeouts?.goto ?? 20000 });
-
-            // Wait for readiness
+            // Per-route context and page with 10s video recording
+            let attempt = 0;
+            let hasVideo = false;
+            let videoBytes = 0;
             let ready = false;
-            try {
-                await Promise.race(
-                    hooks.readinessSelectors.map(sel =>
-                        page.waitForSelector(sel, { timeout: config.timeouts?.ready ?? 8000 })
-                    )
-                );
-                ready = true;
-            } catch {
-                console.warn(`⚠️ Canvas readiness timed out for ${route}`);
-            }
-
-            // Ensure chat/auth drawer open (project-specific)
-            if (hooks.ensureChatOpen) {
-                console.log("💬 Running ensureChatOpen()...");
-                await hooks.ensureChatOpen(page);
-            }
-
-            // Screenshot
-            const screenshotPath = path.join(screenshotsDir, `${name}.png`);
-            await page.screenshot({ path: screenshotPath, fullPage: true });
-            fs.copyFileSync(screenshotPath, path.join(latestShots, `${name}.png`));
-
-            // Short video capture: let it run ~5s then save
-            await page.waitForTimeout(5000);
-            const v = await page.video();
-            const vPathPre = v ? await v.path() : undefined;
-            // --- Behavioral checks ---
+            let loginSucceeded = false;
             let canvasReady = false;
             let chatVisible = false;
-            let loginSucceeded: boolean | undefined = undefined;
-            let shapeCreated: boolean | undefined = undefined;
-            let chatResponded: boolean | undefined = undefined;
-            let chatLatencyMs: number | undefined = undefined;
 
-            try {
-                // Basic readiness checks
-                if (url.includes('/login')) {
-                    // Wait for any input; try to simulate basic auth flow
-                    try {
-                        await page.waitForSelector('input', { timeout: 8000 });
-                        const inputs = page.locator('input');
-                        const count = await inputs.count().catch(() => 0);
-                        if (count > 0) {
-                            await inputs.first().fill('dev@example.com').catch(() => { });
-                        }
-                        // Detect redirected canvas or Sign out button
-                        const redirected = await page.waitForSelector("[data-testid='canvas-shell']", { timeout: 2000 }).then(() => true).catch(() => false);
-                        const signout = await page.locator('button:has-text("Sign out")').isVisible().catch(() => false);
-                        loginSucceeded = redirected || signout;
-                    } catch { loginSucceeded = false }
-                }
+            while (attempt < 2 && !hasVideo) {
+                attempt++;
+                const context = await browser.newContext({
+                    recordVideo: { dir: videoDirArchive, size: { width: 1280, height: 720 } },
+                });
+                const page = await context.newPage();
 
-                if (url.includes('/c/')) {
-                    // Canvas ready
-                    canvasReady = await page.waitForSelector('.konvajs-content', { timeout: 8000 }).then(() => true).catch(() => false);
-                    // Click Rectangle if available
-                    const rectBtn = page.locator('button[title*="Rectangle" i]');
-                    if (await rectBtn.count()) {
-                        await rectBtn.first().click().catch(() => { });
-                        // Heuristic: rely on bridge logs for shape creation
-                        const startShape = Date.now();
-                        for (; ;) {
-                            if (consoleLogs.some(t => t.includes('✅ Added square to canvas store') || t.includes('✅ Square rendered to canvas'))) { shapeCreated = true; break; }
-                            if (Date.now() - startShape > 3000) { shapeCreated = false; break; }
-                            await page.waitForTimeout(150);
-                        }
-                    } else {
-                        shapeCreated = false;
-                    }
+                await page.goto(url, { waitUntil: "networkidle", timeout: config.timeouts?.goto ?? 20000 });
 
-                    // Chat: ensure input, send message and measure latency
-                    chatVisible = await page.locator('[data-testid="chat-drawer"], [aria-label*="AI Chat Drawer" i]').isVisible().catch(() => false);
-                    const chatInput = page.locator('input[placeholder="Ask the assistant…"]');
-                    if (await chatInput.count()) {
-                        await chatInput.fill('create a square at (100,100)').catch(() => { });
-                        const t0 = Date.now();
-                        await chatInput.press('Enter').catch(() => { });
-                        try {
-                            await page.locator('text=/created .* (square|shape)/i').first().waitFor({ timeout: 8000 });
-                            chatResponded = true;
-                            chatLatencyMs = Date.now() - t0;
-                        } catch {
-                            chatResponded = false;
-                        }
-                    }
-                }
-            } catch { }
-
-            await page.close();
-            await new Promise((r) => setTimeout(r, 500));
-            if (vPathPre && fs.existsSync(vPathPre)) {
+                // Route-specific readiness
                 try {
-                    const stat = fs.statSync(vPathPre);
-                    if (stat.size > 10 * 1024) {
-                        const dest = path.join(latestVids, `${name}.webm`);
-                        fs.copyFileSync(vPathPre, dest);
-                        console.log(`🎥 Recorded 5s video for ${route}`);
+                    if (url.includes('/login')) {
+                        await page.waitForSelector("[data-testid='auth-form'], form", { timeout: config.timeouts?.ready ?? 8000 });
+                        ready = true;
                     } else {
-                        console.warn(`⚠️ Incomplete video for ${name} (skipping copy).`);
+                        await Promise.race([
+                            page.waitForSelector("[data-testid='canvas-shell']", { timeout: config.timeouts?.ready ?? 8000 }),
+                            page.waitForSelector(".konvajs-content", { timeout: config.timeouts?.ready ?? 8000 }),
+                        ]);
+                        ready = true;
                     }
-                } catch { }
+                } catch {
+                    ready = false;
+                }
+
+                // Canvas-only: ensure chat open via hooks
+                if (name === 'canvas_app' && hooks.ensureChatOpen) {
+                    try { await hooks.ensureChatOpen(page); } catch { }
+                    try {
+                        chatVisible = await page.locator('[data-testid="chat-drawer"], [aria-label*="AI Chat Drawer" i]').isVisible();
+                    } catch { chatVisible = false }
+                }
+
+                // Screenshot
+                const screenshotPath = path.join(screenshotsDir, `${name}.png`);
+                await page.screenshot({ path: screenshotPath, fullPage: true });
+                fs.copyFileSync(screenshotPath, path.join(latestShots, `${name}.png`));
+                console.log(`📸 Captured screenshot for ${name}`);
+
+                // 3s preroll, then 10s record
+                await page.waitForTimeout(3000);
+                console.log(`🎥 Started 10 s video for ${name}`);
+                await page.waitForTimeout(10000);
+                const v = await page.video();
+                const vPathPre = v ? await v.path() : undefined;
+                await context.close();
+                await new Promise(r => setTimeout(r, 500));
+
+                if (vPathPre && fs.existsSync(vPathPre)) {
+                    try {
+                        const st = fs.statSync(vPathPre);
+                        videoBytes = st.size;
+                        if (st.size > 10 * 1024) {
+                            const dest = path.join(latestVids, `${name}.webm`);
+                            fs.copyFileSync(vPathPre, dest);
+                            hasVideo = true;
+                            const mb = (st.size / (1024 * 1024)).toFixed(1);
+                            console.log(`🎥 Video flushed ✓ (${mb} MB)`);
+                        } else {
+                            console.warn(`⚠️ Incomplete video for ${name} (skipping copy).`);
+                        }
+                    } catch { hasVideo = false }
+                }
+
+                if (!hasVideo && attempt < 2) console.log(`🔁 Retrying capture for ${name} due to incomplete video...`);
+
+                // Record simple flags
+                if (name === 'login_screen') loginSucceeded = ready;
+                if (name === 'canvas_app') canvasReady = ready;
             }
 
-            // Determine hasVideo from latest copy
-            const hasVideo = fs.existsSync(path.join(latestVids, `${name}.webm`)) && ((): boolean => { try { return fs.statSync(path.join(latestVids, `${name}.webm`)).size > 10 * 1024 } catch { return false } })();
+            const status = (() => {
+                if (name === 'login_screen') return (loginSucceeded && hasVideo) ? 'success' : (hasVideo ? 'partial' : 'fail');
+                if (name === 'canvas_app') return (canvasReady && (chatVisible) && hasVideo) ? 'success' : ((canvasReady && hasVideo) ? 'partial' : 'fail');
+                return (ready && hasVideo) ? 'success' : (hasVideo ? 'partial' : 'fail');
+            })();
 
-            results.push({ route, url, name, screenshot: path.join(latestShots, `${name}.png`), canvasReady: !!canvasReady, chatVisible: !!chatVisible, loginSucceeded, shapeCreated, chatResponded, chatLatencyMs, hasVideo, status: ready ? "success" : "partial" });
-            console.log(`📸 Captured ${route} (${ready ? "ready" : "partial"})`);
+            results.push({ route, url, name, screenshot: path.join(latestShots, `${name}.png`), loginSucceeded, canvasReady, chatVisible, hasVideo, videoBytes, status });
+            console.log(`📸 Captured ${route} (${status})`);
         } catch (err: any) {
             results.push({ route, url, status: "fail", error: err.message });
             console.warn(`❌ Failed to capture ${route}: ${err.message}`);

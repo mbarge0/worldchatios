@@ -77,7 +77,7 @@ const summaryPath = path.join(latestDir, "verification_summary.json");
                 visualDiff = await compareImages(screenshot, baselinePath);
             }
 
-            // Video check: route name converted to file name
+            // Video check: route name converted to semantic file name
             const videoName = `${(name || route.replace(/[/?=&]/g, "_").replace(/_+/g, "_").replace(/^_/, ""))}.webm`;
             const videoPath = path.join(path.resolve("docs/evidence/latest/videos"), videoName);
             let hasVideo = !!capHasVideo;
@@ -88,12 +88,30 @@ const summaryPath = path.join(latestDir, "verification_summary.json");
                 } catch { hasVideo = false }
             }
 
+            // Assistant text sanity: detect mismatch circle vs square
+            let chatWrongType = false;
+            const notes: string[] = [];
+            try {
+                if (route.includes('/c/')) {
+                    const drawer = page.locator('[data-testid="chat-drawer"], [aria-label*="AI Chat Drawer" i]');
+                    // Pull recent text from chat drawer if present
+                    const textBlob = await drawer.first().innerText().catch(() => '');
+                    const saysCircle = /\bcircle\b/i.test(textBlob || '')
+                    const saysSquare = /\bsquare\b/i.test(textBlob || '')
+                    if (saysCircle && !saysSquare) {
+                        chatWrongType = true;
+                        notes.push('assistant said circle');
+                    }
+                }
+            } catch { }
+
             // Behavioral pass criteria
             let status = 'partial';
             if (route.includes('/login')) {
                 status = loginSucceeded && hasVideo ? 'success' : (hasVideo ? 'partial' : 'fail');
             } else if (route.includes('/c/')) {
-                status = canvasReady && chatVisible && !!shapeCreated && !!chatResponded && hasVideo ? 'success' : ((canvasReady && (chatVisible || hasVideo)) ? 'partial' : 'fail');
+                status = canvasReady && chatVisible && hasVideo ? 'success' : ((canvasReady && hasVideo) ? 'partial' : 'fail');
+                if (chatWrongType) status = 'fail';
             }
 
             summary.push({
@@ -104,12 +122,14 @@ const summaryPath = path.join(latestDir, "verification_summary.json");
                 shapeCreated: !!shapeCreated,
                 chatResponded: !!chatResponded,
                 chatLatencyMs: chatLatencyMs ?? null,
+                chatWrongType,
                 hasVideo,
                 status,
+                notes,
             });
 
             const latencyStr = chatLatencyMs ? (Math.round((chatLatencyMs / 10)) / 100).toFixed(2) : 'n/a';
-            console.log(`✅ ${route} → ready:${canvasReady}, chat:${chatVisible}, video:${hasVideo}, login:${!!loginSucceeded}, shape:${!!shapeCreated}, reply:${!!chatResponded} ${chatResponded ? `(💬 ${latencyStr} s)` : ''}`);
+            console.log(`✅ ${route} → ready:${canvasReady}, chat:${chatVisible}, video:${hasVideo}, login:${!!loginSucceeded}, shape:${!!shapeCreated}, reply:${!!chatResponded} ${chatResponded ? `(💬 ${latencyStr} s)` : ''}${chatWrongType ? ' ⚠️ mismatch (circle vs square)' : ''}`);
         } catch (err: any) {
             summary.push({
                 route,

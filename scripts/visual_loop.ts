@@ -19,6 +19,18 @@ async function main() {
         process.exit(0)
     }
 
+    // Clean latest folder before capture
+    try {
+        const latestRoot = path.join('docs', 'evidence', 'latest')
+        if (fs.existsSync(latestRoot)) {
+            for (const entry of fs.readdirSync(latestRoot)) {
+                try { fs.rmSync(path.join(latestRoot, entry), { recursive: true, force: true }) } catch { }
+            }
+        } else {
+            fs.mkdirSync(latestRoot, { recursive: true })
+        }
+    } catch { }
+
     // 1) Capture and 2) Verify
     run('pnpm -s capture:visual')
     run('pnpm -s verify:visual')
@@ -37,26 +49,36 @@ async function main() {
     let allPass = true
     let shotCount = 0
     let vidCount = 0
+    console.log('\nRoute                  Canvas  Chat  Video  Status')
     for (const item of summary) {
         const route: string = item.route || 'unknown'
         const canvasReady: boolean = !!item.canvasReady
         const chatVisible: boolean = !!item.chatVisible
-        const status: string = item.status || (canvasReady && chatVisible ? 'success' : (canvasReady || chatVisible ? 'partial' : 'fail'))
-        const videoName = encodeURIComponent(route) + '.webm'
+        const status: string = item.status || 'partial'
+        const name = route.includes('/login') ? 'login_screen' : (route.includes('/c/') ? 'canvas_app' : encodeURIComponent(route))
+        const videoName = name + '.webm'
         const videoPath = path.join('docs', 'evidence', 'latest', 'videos', videoName)
         const videoOk = fileExists(videoPath)
-        const shotName = encodeURIComponent(route) + '.png'
+        const shotName = name + '.png'
         const shotPath = path.join('docs', 'evidence', 'latest', 'screenshots', shotName)
         if (fileExists(shotPath)) shotCount++
         if (videoOk) vidCount++
 
         const canvasMark = canvasReady ? '✅' : '❌'
-        const chatMark = chatVisible ? '✅' : '❌'
+        const chatMark = chatVisible ? '✅' : '—'
         const videoMark = videoOk ? '✅' : '❌'
 
-        console.log(`\nRoute: ${route}\n- Canvas: ${canvasMark}\n- Chat: ${chatMark}\n- Video: ${videoMark}\n- Status: ${status}`)
+        const pad = (s: string) => (s + '                    ').slice(0, 22)
+        console.log(`${pad(route)}  ${canvasMark}      ${chatMark}     ${videoMark}      ${status}`)
+        if (Array.isArray((item as any).notes) && (item as any).notes.length) {
+            for (const n of (item as any).notes) console.log(`  • Note: ${n}`)
+        }
 
-        if (!canvasReady || !chatVisible) allPass = false
+        if (status !== 'success') allPass = false
+        if ((item as any).chatWrongType) {
+            console.log("⚠️ Assistant text mismatch (‘circle’ vs expected ‘square’) — triggering surgical fix suggestion.")
+            try { run('pnpm -s fix:surgical') } catch { }
+        }
     }
 
     // Delete stray evidence directly under latest/ only if all videos >= 10KB
@@ -87,14 +109,13 @@ async function main() {
 
     // 5) Exit code and messaging
     const seconds = ((Date.now() - start) / 1000).toFixed(1)
-    console.log(`\n📦 Screenshots saved: ${shotCount} | 🎥 Videos saved: ${vidCount} | 🧹 Cleaned: 0`)
+    console.log(`\n📦 Screenshots saved: ${shotCount} | 🎥 Videos saved: ${vidCount}`)
     if (!allPass) {
-        console.log('\n🚨 Behavioral verification failed — initiating surgical fix loop.')
-        try { run('pnpm -s fix:surgical') } catch { }
+        console.log('\n🚨 Behavioral verification failed — manual or surgical fix required.')
         console.log(`⏱️ Total runtime: ${seconds}s`)
         process.exit(1)
     } else {
-        console.log('\n✅ All behavioral checks passed.')
+        console.log('\n✅ All verification checks passed. Artifacts under docs/evidence/latest.')
         console.log(`⏱️ Total runtime: ${seconds}s`)
         process.exit(0)
     }

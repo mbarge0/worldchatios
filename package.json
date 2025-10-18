@@ -21,6 +21,7 @@
     "capture:visual": "tsx tools/visual-verification-core/src/capture.ts",
     "verify:visual": "tsx tools/visual-verification-core/src/verify_visual.ts",
     "visual:loop": "tsx scripts/visual_loop.ts",
+    "evolvr:loop": "tsx tools/evolvr-core/loop.ts",
     "surgical:loop": "pnpm -s visual:loop",
     "fix:surgical": "tsx scripts/surgical_fix.ts"
   },

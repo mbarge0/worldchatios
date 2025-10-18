@@ -1,16 +1,16 @@
 [
   {
     "route": "/login?auto=dev",
-    "canvasReady": true,
+    "canvasReady": false,
     "chatVisible": false,
-    "hasVideo": true,
-    "status": "partial"
+    "hasVideo": false,
+    "status": "fail"
   },
   {
     "route": "/c/default?auto=dev",
-    "canvasReady": true,
+    "canvasReady": false,
     "chatVisible": false,
-    "hasVideo": true,
-    "status": "partial"
+    "hasVideo": false,
+    "status": "fail"
   }
 ]
