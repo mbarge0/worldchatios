@@ -136,7 +136,7 @@ export async function captureVisuals(config: VisualConfig, hooks: VisualHooks) {
                         await rectBtn.first().click().catch(() => { });
                         // Heuristic: rely on bridge logs for shape creation
                         const startShape = Date.now();
-                        for (;;) {
+                        for (; ;) {
                             if (consoleLogs.some(t => t.includes('✅ Added square to canvas store') || t.includes('✅ Square rendered to canvas'))) { shapeCreated = true; break; }
                             if (Date.now() - startShape > 3000) { shapeCreated = false; break; }
                             await page.waitForTimeout(150);

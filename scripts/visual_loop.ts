@@ -59,26 +59,42 @@ async function main() {
         if (!canvasReady || !chatVisible) allPass = false
     }
 
-    // Delete stray evidence directly under latest/
+    // Delete stray evidence directly under latest/ only if all videos >= 10KB
     try {
         const latestRoot = path.join('docs', 'evidence', 'latest')
-        for (const entry of fs.readdirSync(latestRoot)) {
-            if (entry.endsWith('.png') || entry.endsWith('.webm')) {
-                try { fs.rmSync(path.join(latestRoot, entry), { force: true }) } catch { }
+        const vidsRoot = path.join(latestRoot, 'videos')
+        let smallVideo = false
+        try {
+            for (const entry of fs.readdirSync(vidsRoot)) {
+                if (entry.endsWith('.webm')) {
+                    const st = fs.statSync(path.join(vidsRoot, entry))
+                    if (st.size < 10 * 1024) { smallVideo = true; break }
+                }
             }
+        } catch { }
+        let cleaned = 0
+        if (!smallVideo) {
+            for (const entry of fs.readdirSync(latestRoot)) {
+                if (entry.endsWith('.png') || entry.endsWith('.webm')) {
+                    try { fs.rmSync(path.join(latestRoot, entry), { force: true }); cleaned++ } catch { }
+                }
+            }
+            console.log(`🧹 Cleaned up stale evidence files. Cleaned: ${cleaned}`)
+        } else {
+            console.log('🧹 Skipping cleanup due to small/incomplete video for debugging.')
         }
-        console.log('🧹 Cleaned up stale evidence files.')
     } catch { }
 
     // 5) Exit code and messaging
     const seconds = ((Date.now() - start) / 1000).toFixed(1)
-    console.log(`\n📦 Saved: ${shotCount} screenshots, ${vidCount} videos`)
+    console.log(`\n📦 Screenshots saved: ${shotCount} | 🎥 Videos saved: ${vidCount} | 🧹 Cleaned: 0`)
     if (!allPass) {
-        console.log('\n🚑 Visual verification failed for one or more routes. Entering surgical fix loop is recommended.')
+        console.log('\n🚨 Behavioral verification failed — initiating surgical fix loop.')
+        try { run('pnpm -s fix:surgical') } catch { }
         console.log(`⏱️ Total runtime: ${seconds}s`)
         process.exit(1)
     } else {
-        console.log('\n✅ Visual verification passed for all routes.')
+        console.log('\n✅ All behavioral checks passed.')
         console.log(`⏱️ Total runtime: ${seconds}s`)
         process.exit(0)
     }

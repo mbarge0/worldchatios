@@ -3,6 +3,10 @@
     "route": "/login?auto=dev",
     "canvasReady": true,
     "chatVisible": false,
+    "loginSucceeded": false,
+    "shapeCreated": false,
+    "chatResponded": false,
+    "chatLatencyMs": null,
     "hasVideo": true,
     "status": "partial"
   },
@@ -10,6 +14,10 @@
     "route": "/c/default?auto=dev",
     "canvasReady": true,
     "chatVisible": false,
+    "loginSucceeded": false,
+    "shapeCreated": false,
+    "chatResponded": false,
+    "chatLatencyMs": null,
     "hasVideo": true,
     "status": "partial"
   }
