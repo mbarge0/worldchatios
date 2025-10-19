@@ -1,3 +1,4 @@
+import { verifyMotionPlayback } from '../foundry-motion/motion.verify.js'
 import { runCapture, runVerify } from './adapters/playwright_local.js'
 import { selfHeal } from './heal.js'
 import type { EvolvrConfig } from './interfaces.js'
@@ -9,6 +10,22 @@ export async function evolvrLoop(config: EvolvrConfig) {
 
     await runCapture(adapted)
     let results = await runVerify(adapted)
+    // Motion verification (best-effort, does not fail build)
+    try {
+        const { chromium } = await import('playwright')
+        const browser = await chromium.launch({ headless: true })
+        const context = await browser.newContext()
+        const page = await context.newPage()
+        for (const route of adapted.routes) {
+            try {
+                const url = `${adapted.baseUrl}${route}`
+                await page.goto(url, { waitUntil: 'domcontentloaded', timeout: adapted.timeouts?.goto || 20000 })
+                const mv = await verifyMotionPlayback(page, 1200)
+                results.push({ route, motionDetected: mv.motionDetected, motionDurationMs: mv.durationMs, motionSuccess: mv.success, status: 'info' })
+            } catch { }
+        }
+        await browser.close()
+    } catch { }
     let allOk = results.every(r => r.status === 'success')
     if (!allOk) {
         const { config: healed, patch } = await selfHeal(adapted)

@@ -27,7 +27,9 @@
     "visual:loop": "tsx scripts/visual_loop.ts",
     "evolvr:loop": "tsx tools/evolvr-core/loop.ts",
     "surgical:loop": "pnpm -s visual:loop",
-    "fix:surgical": "tsx scripts/surgical_fix.ts"
+    "fix:surgical": "tsx scripts/surgical_fix.ts",
+    "motion:test": "tsx tools/foundry-motion/motion.test.ts",
+    "showcase:run": "tsx tools/foundry-showcase/showcase.cli.ts"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.19.0",

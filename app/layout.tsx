@@ -1,3 +1,4 @@
+import MotionWrapper from "@/tools/foundry-motion/MotionWrapper"
 import type { Metadata } from "next"
 import "./globals.css"
 
@@ -16,7 +17,9 @@ export default function RootLayout({
       <body>
         {/* Foundry Motion System: placeholder mount for future animations/effects */}
         <div id="foundry-motion-root" style={{ display: 'contents' }} />
-        {children}
+        <MotionWrapper preset="fadeIn">
+          {children}
+        </MotionWrapper>
       </body>
     </html>
   )

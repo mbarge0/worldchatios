@@ -1,0 +1,10 @@
+[
+  {
+    "route": "/",
+    "url": "http://localhost:3000/",
+    "ok": true,
+    "durationMs": 8036,
+    "screenshotPath": "/Users/matthewbarge/DevProjects/foundryv2/docs/showcase/latest/screenshots/%2F.png",
+    "videoPath": "/Users/matthewbarge/DevProjects/foundryv2/docs/showcase/latest/videos/%2F.webm"
+  }
+]

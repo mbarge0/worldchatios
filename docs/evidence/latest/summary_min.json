@@ -1,7 +1,7 @@
 [
   {
     "route": "/",
-    "canvasReady": true,
+    "canvasReady": false,
     "chatVisible": false,
     "hasVideo": true,
     "status": "partial"

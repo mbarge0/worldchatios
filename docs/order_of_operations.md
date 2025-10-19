@@ -74,6 +74,8 @@ Notes:
   3. Submit via Gauntlet portal
   4. Archive evidence and phase reports
 
+See Showcase Overview: `./showcase_overview.md`
+
 ---
 
 ## 7️⃣ Continuous Improvement

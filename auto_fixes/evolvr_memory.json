@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2025-10-19T15:54:20.772Z",
+  "lastUpdated": "2025-10-19T16:11:00.193Z",
   "defaults": {
     "timeouts": {
       "goto": 20000,
@@ -9,5 +9,7 @@
     "requireChatVisible": false
   },
   "patterns": {},
-  "lastPatchReasons": []
+  "lastPatchReasons": [
+    "/: increased recordSeconds to 20s"
+  ]
 }

@@ -11,6 +11,7 @@
 import fs from "fs";
 import path from "path";
 import { chromium } from "playwright";
+import { verifyMotionPlayback } from "../../../tools/foundry-motion/motion.verify.js";
 import { compareImages } from "./image_utils.js";
 import type { VisualHooks } from "./interfaces.js";
 
@@ -35,7 +36,7 @@ const summaryPath = path.join(latestDir, "verification_summary.json");
     const summary: Array<Record<string, any>> = [];
 
     for (const entry of results) {
-        const { route, screenshot, name, canvasReady: capCanvasReady, chatVisible: capChatVisible, loginSucceeded: capLoginSucceeded, shapeCreated: capShapeCreated, chatResponded: capChatResponded, chatLatencyMs: capChatLatencyMs, hasVideo: capHasVideo } = entry;
+        const { route, screenshot, name, canvasReady: capCanvasReady, chatVisible: capChatVisible, loginSucceeded: capLoginSucceeded, shapeCreated: capShapeCreated, chatResponded: capChatResponded, chatLatencyMs: capChatLatencyMs, hasVideo: capHasVideo, motionDetected: capMotionDetected, motionDurationMs: capMotionDurationMs, motionSuccess: capMotionSuccess } = entry;
         console.log(`🧠 Verifying route ${route}...`);
 
         let canvasReady = !!capCanvasReady;
@@ -68,6 +69,19 @@ const summaryPath = path.join(latestDir, "verification_summary.json");
                 try {
                     chatVisible = await page.locator('[data-testid="chat-drawer"], [aria-label*="chat" i]').isVisible();
                 } catch { chatVisible = false }
+            }
+
+            // Motion playback verification (best-effort)
+            let motionDetected = !!capMotionDetected;
+            let motionDurationMs = capMotionDurationMs ?? 0;
+            let motionSuccess = !!capMotionSuccess;
+            if (!motionDetected) {
+                try {
+                    const mv = await verifyMotionPlayback(page, 1200);
+                    motionDetected = !!mv.motionDetected;
+                    motionDurationMs = mv.durationMs;
+                    motionSuccess = !!mv.success;
+                } catch { }
             }
 
             // Optional: Compare against baseline
@@ -122,6 +136,9 @@ const summaryPath = path.join(latestDir, "verification_summary.json");
                 shapeCreated: !!shapeCreated,
                 chatResponded: !!chatResponded,
                 chatLatencyMs: chatLatencyMs ?? null,
+                motionDetected,
+                motionDurationMs,
+                motionSuccess,
                 chatWrongType,
                 hasVideo,
                 status,
@@ -129,7 +146,8 @@ const summaryPath = path.join(latestDir, "verification_summary.json");
             });
 
             const latencyStr = chatLatencyMs ? (Math.round((chatLatencyMs / 10)) / 100).toFixed(2) : 'n/a';
-            console.log(`✅ ${route} → ready:${canvasReady}, chat:${chatVisible}, video:${hasVideo}, login:${!!loginSucceeded}, shape:${!!shapeCreated}, reply:${!!chatResponded} ${chatResponded ? `(💬 ${latencyStr} s)` : ''}${chatWrongType ? ' ⚠️ mismatch (circle vs square)' : ''}`);
+            const motionStr = motionDetected ? `motion:true(${motionDurationMs}ms)` : 'motion:false';
+            console.log(`✅ ${route} → ready:${canvasReady}, chat:${chatVisible}, video:${hasVideo}, login:${!!loginSucceeded}, shape:${!!shapeCreated}, reply:${!!chatResponded} ${chatResponded ? `(💬 ${latencyStr} s)` : ''} ${motionStr}${chatWrongType ? ' ⚠️ mismatch (circle vs square)' : ''}`);
         } catch (err: any) {
             summary.push({
                 route,
