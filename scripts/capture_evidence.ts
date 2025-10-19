@@ -10,12 +10,8 @@ async function captureEvidence(url = "http://localhost:3000", outputDir = "./doc
     // Navigate to the app
     await page.goto(url, { waitUntil: "networkidle0" });
 
-    // Capture login screen
-    await page.screenshot({ path: `${outputDir}/login.png` });
-
-    // Go to canvas route
-    await page.goto(`${url}/c/default`, { waitUntil: "networkidle0" });
-    await page.screenshot({ path: `${outputDir}/canvas.png` });
+    // Capture landing screen
+    await page.screenshot({ path: `${outputDir}/home.png` });
 
     await browser.close();
     console.log("✅ Evidence screenshots saved:", outputDir);

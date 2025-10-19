@@ -1,9 +1,12 @@
 {
-  "name": "collabcanvas",
-  "version": "0.1.0",
+  "name": "foundry-core-v2",
+  "version": "2.0.0",
   "private": true,
   "scripts": {
     "dev": "./scripts/autostart-checkpoint.sh && next dev",
+    "plan": "echo '🧭 Foundry Core v2: Planning phase hooks ready'",
+    "develop": "echo '🔧 Foundry Core v2: Development phase hooks ready'",
+    "debug": "echo '🐞 Foundry Core v2: Debugging phase hooks ready'",
     "dev:clean": "rm -rf .next node_modules/.cache && next dev",
     "build": "next build",
     "postbuild": "echo 'Skipping visual verification in Vercel build (Playwright not available)'",

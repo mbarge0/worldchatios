@@ -1,7 +1,7 @@
 /*
  Minimal Playwright MCP replacement
  - Launches Chromium headless
- - Navigates to provided URL (default: http://localhost:3000/c/default?auto=dev)
+ - Navigates to provided URL (default: http://localhost:3000/)
  - Waits for network idle (best-effort)
  - Captures console errors
  - Checks canvas and chat drawer readiness via selectors
@@ -27,7 +27,7 @@ async function safeWaitFor(page: any, selector: string, timeoutMs: number): Prom
 }
 
 async function main() {
-    const route = process.argv[2] || 'http://localhost:3000/c/default?auto=dev'
+    const route = process.argv[2] || 'http://localhost:3000/'
     const consoleErrors: string[] = []
     let browser: any
     let page: any

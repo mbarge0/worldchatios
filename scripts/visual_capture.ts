@@ -1,7 +1,7 @@
 // scripts/visual_capture.ts
 /**
  * Focused Visual Capture
- * - Only captures three routes (/, /c/test-canvas, /c/default?auto=dev)
+ * - Example capture for root route only (framework default)
  * - Attempts Firebase REST login if credentials provided; otherwise uses ?auto=dev fallback
  * - Robust readiness check for canvas (selectors) with a retry
  * - Writes only focused screenshots to /docs/evidence/latest/
@@ -20,8 +20,8 @@ const latestDir = path.resolve("docs/evidence/latest");
 fs.mkdirSync(outDir, { recursive: true });
 fs.mkdirSync(latestDir, { recursive: true });
 
-// Focused list (two routes only for speed)
-const routes = ["/c/test-canvas?auto=dev", "/c/default?auto=dev"];
+// Framework default: capture root route; downstream apps can customize
+const routes = ["/"];
 
 const EMAIL = process.env.VISUAL_CAPTURE_USER_EMAIL || "";
 const PASS = process.env.VISUAL_CAPTURE_USER_PASS || "";
@@ -87,24 +87,14 @@ async function getFirebaseIdToken(email: string, password: string): Promise<stri
     // Single readiness check (max 10s)
     async function canvasReady(timeout = 10_000): Promise<boolean> {
         try {
-            await Promise.race([
-                page.waitForSelector('[data-testid="canvas-shell"]', { timeout }),
-                page.waitForSelector('[data-testid="canvas-header"]', { timeout }),
-                page.waitForSelector(".konvajs-content", { timeout }),
-            ]);
-            // Make sure we're not on the login heading
-            const onLogin = await page.locator('text=/sign in/i').first().isVisible().catch(() => false);
-            return !onLogin;
+            await page.waitForSelector('main', { timeout });
+            return true;
         } catch {
             return false;
         }
     }
 
     for (let route of routes) {
-        // enforce auto=dev on canvas routes if no token
-        if (!token && route.startsWith("/c/") && !route.includes("auto=dev")) {
-            route = route + (route.includes("?") ? "&" : "?") + "auto=dev";
-        }
         const name = route.replace(/[/?=&]/g, "_").replace(/_+/g, "_").replace(/^_/, "");
         const url = `${BASE_URL}${route}`;
 
@@ -113,27 +103,14 @@ async function getFirebaseIdToken(email: string, password: string): Promise<stri
             await page.goto(url, { waitUntil: "networkidle", timeout: 60_000 });
 
             let ready = await canvasReady(10_000);
-            if (!ready && route.startsWith("/c/")) {
+            if (!ready) {
                 await page.reload({ waitUntil: "networkidle", timeout: 60_000 }).catch(() => { });
                 ready = await canvasReady(10_000);
             }
 
             // capture screenshot (fullPage to include header in evidence)
             const screenshotPath = path.join(outDir, `${name}.png`);
-            // Force chat drawer open before capture
-            try {
-                await page.mouse.move(400, 400);
-                await page.mouse.click(400, 400);
-                await page.evaluate(() => {
-                    const btn = document.querySelector('[data-testid="chat-toggle"], button:has-text("Chat"), button:has-text("AI")') as HTMLElement | null;
-                    if (btn) btn.click();
-                    const drawer = document.querySelector('[data-testid="chat-drawer"], [aria-label*="chat" i]') as HTMLElement | null;
-                    if (drawer) (drawer.style as any).display = 'block';
-                });
-                await page.waitForTimeout(800);
-            } catch {
-                // ignore
-            }
+            // No chat drawer handling for framework default
             await page.screenshot({ path: screenshotPath, fullPage: true });
             // copy to latest, overwriting only the focused set
             fs.copyFileSync(screenshotPath, path.join(latestDir, `${name}.png`));
