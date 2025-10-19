@@ -1,0 +1,9 @@
+[
+  {
+    "route": "/",
+    "canvasReady": true,
+    "chatVisible": false,
+    "hasVideo": true,
+    "status": "partial"
+  }
+]

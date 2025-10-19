@@ -1,0 +1,8 @@
+{
+  "lastUpdated": "2025-10-19T15:41:30.380Z",
+  "defaults": {},
+  "patterns": {},
+  "lastPatchReasons": [
+    "/: increased recordSeconds to 20s"
+  ]
+}
