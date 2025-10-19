@@ -1,0 +1,18 @@
+[
+  {
+    "route": "/",
+    "canvasReady": false,
+    "chatVisible": false,
+    "loginSucceeded": false,
+    "shapeCreated": false,
+    "chatResponded": false,
+    "chatLatencyMs": null,
+    "motionDetected": false,
+    "motionDurationMs": 0,
+    "motionSuccess": false,
+    "chatWrongType": false,
+    "hasVideo": true,
+    "status": "partial",
+    "notes": []
+  }
+]

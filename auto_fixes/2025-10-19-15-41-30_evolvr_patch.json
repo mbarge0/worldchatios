@@ -1,0 +1,24 @@
+{
+  "timestamp": "2025-10-19-15-41-30",
+  "reasons": [
+    "/: increased recordSeconds to 20s"
+  ],
+  "changes": {
+    "timeouts": {
+      "goto": 20000,
+      "ready": 16000
+    },
+    "selectors": {
+      "loginReady": [
+        "main",
+        "body"
+      ],
+      "canvasReady": [
+        "main"
+      ],
+      "chatVisible": "[data-testid='chat-drawer'], [aria-label*='chat' i]"
+    },
+    "requireChatVisible": false,
+    "recordSeconds": 20
+  }
+}

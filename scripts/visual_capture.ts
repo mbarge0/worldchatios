@@ -10,6 +10,7 @@
 import fs from "fs";
 import path from "path";
 import { chromium } from "playwright";
+import { verifyMotionPlayback } from "../tools/foundry-motion/motion.verify";
 
 const phase = process.argv[2] || "build";
 const outDir = path.resolve(
@@ -108,6 +109,13 @@ async function getFirebaseIdToken(email: string, password: string): Promise<stri
                 ready = await canvasReady(10_000);
             }
 
+            // Motion verification (best-effort)
+            let motionDetected = false; let motionDurationMs = 0; let motionSuccess = false;
+            try {
+                const mv = await verifyMotionPlayback(page, 1200);
+                motionDetected = !!mv.motionDetected; motionDurationMs = mv.durationMs; motionSuccess = !!mv.success;
+            } catch { }
+
             // capture screenshot (fullPage to include header in evidence)
             const screenshotPath = path.join(outDir, `${name}.png`);
             // No chat drawer handling for framework default
@@ -115,7 +123,7 @@ async function getFirebaseIdToken(email: string, password: string): Promise<stri
             // copy to latest, overwriting only the focused set
             fs.copyFileSync(screenshotPath, path.join(latestDir, `${name}.png`));
 
-            results.push({ route, url, screenshot: screenshotPath, status: ready ? "success" : "partial" });
+            results.push({ route, url, screenshot: screenshotPath, status: ready ? "success" : "partial", motionDetected, motionDurationMs, motionSuccess });
             console.log(`📸 Captured ${route}`);
         } catch (err: any) {
             results.push({ route, url, status: "fail", error: String(err?.message ?? err) });

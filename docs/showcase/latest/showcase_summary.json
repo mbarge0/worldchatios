@@ -1,0 +1,19 @@
+{
+  "runAt": "2025-10-19T16:21:13.790Z",
+  "totalRoutes": 1,
+  "okCount": 1,
+  "failedRoutes": [],
+  "videos": [
+    {
+      "route": "/",
+      "file": "videos/%2F.webm"
+    }
+  ],
+  "screenshots": [
+    {
+      "route": "/",
+      "file": "screenshots/%2F.png"
+    }
+  ],
+  "estimatedMs": 3
+}

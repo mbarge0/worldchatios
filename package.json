@@ -6,11 +6,11 @@
     "dev": "./scripts/autostart-checkpoint.sh && next dev",
     "plan": "echo '🧭 Foundry Core v2: Planning phase hooks ready'",
     "develop": "echo '🔧 Foundry Core v2: Development phase hooks ready'",
-    "debug": "echo '🐞 Foundry Core v2: Debugging phase hooks ready'",
+    "debug": "pnpm -s build && ([ \"$SKIP_EVOLVR\" = \"1\" ] || pnpm -s evolvr:loop) && ([ \"$SKIP_VISUAL\" = \"1\" ] || pnpm -s visual:loop)",
     "launch": "pnpm -s build && pnpm -s start",
     "dev:clean": "rm -rf .next node_modules/.cache && next dev",
     "build": "next build",
-    "postbuild": "echo 'Skipping visual verification in Vercel build (Playwright not available)'",
+    "postbuild": "echo 'Build complete'",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest",
@@ -27,7 +27,9 @@
     "visual:loop": "tsx scripts/visual_loop.ts",
     "evolvr:loop": "tsx tools/evolvr-core/loop.ts",
     "surgical:loop": "pnpm -s visual:loop",
-    "fix:surgical": "tsx scripts/surgical_fix.ts"
+    "fix:surgical": "tsx scripts/surgical_fix.ts",
+    "motion:test": "tsx tools/foundry-motion/motion.test.ts",
+    "showcase:run": "tsx tools/foundry-showcase/showcase.cli.ts"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.19.0",

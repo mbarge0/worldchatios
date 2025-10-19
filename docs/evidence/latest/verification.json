@@ -1,0 +1,14 @@
+[
+  {
+    "route": "/",
+    "url": "http://localhost:3000/",
+    "name": "route_custom",
+    "screenshot": "/Users/matthewbarge/DevProjects/foundryv2/docs/evidence/latest/screenshots/route_custom.png",
+    "loginSucceeded": false,
+    "canvasReady": false,
+    "chatVisible": false,
+    "hasVideo": true,
+    "videoBytes": 59239,
+    "status": "partial"
+  }
+]
