@@ -7,6 +7,7 @@
     "plan": "echo '🧭 Foundry Core v2: Planning phase hooks ready'",
     "develop": "echo '🔧 Foundry Core v2: Development phase hooks ready'",
     "debug": "echo '🐞 Foundry Core v2: Debugging phase hooks ready'",
+    "launch": "pnpm -s build && pnpm -s start",
     "dev:clean": "rm -rf .next node_modules/.cache && next dev",
     "build": "next build",
     "postbuild": "echo 'Skipping visual verification in Vercel build (Playwright not available)'",

@@ -14,6 +14,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        {/* Foundry Motion System: placeholder mount for future animations/effects */}
+        <div id="foundry-motion-root" style={{ display: 'contents' }} />
         {children}
       </body>
     </html>
