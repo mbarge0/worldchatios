@@ -1,0 +1,12 @@
+[
+  {
+    "route": "/",
+    "name": "route_custom",
+    "canvasReady": true,
+    "loginSucceeded": false,
+    "chatVisible": false,
+    "hasVideo": true,
+    "degraded": false,
+    "status": "success"
+  }
+]

@@ -16,8 +16,14 @@ pnpm dev
 ### Core Commands
 - `pnpm plan` – planning phase hooks
 - `pnpm develop` – development phase hooks
-- `pnpm debug` – debugging phase hooks
-- `pnpm visual:loop` – visual verification loop
+- `pnpm build` – silent, non-interactive compile (no verification)
+- `pnpm debug` – full verification suite (build → evolvr → visual)
+
+Skip flags for debug:
+```bash
+SKIP_EVOLVR=1 pnpm debug   # skip evolvr verification
+SKIP_VISUAL=1 pnpm debug   # skip visual verification
+```
 
 ### Docs
 See `/docs/index.md`, `/docs/context_management_playbook.md`, and `/docs/operations/` for workflows. New work goes into `/docs/operations/recent/`; move completed artifacts to `/docs/operations/archive/`.
