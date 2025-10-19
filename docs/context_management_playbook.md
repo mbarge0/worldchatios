@@ -6,6 +6,12 @@
 
 ---
 
+## Addendum for Foundry Core v2
+- Replace legacy “Planning/Building Loop” phrasing with the super-phase cadence: **Plan → Build → Reflect**.
+- Storage policy: **Write all in-progress phase outputs to `/docs/operations/phases/recent/` and move completed/superseded artifacts to `/docs/operations/phases/archive/`**.
+
+---
+
 ## 1. Purpose and Philosophy
 
 This playbook governs how Cursor manages context, phase transitions, testing, and reflection during development.
@@ -45,11 +51,11 @@ Cursor, confirm the PRD, success criteria, and constraints before any implementa
 
 ---
 
-### **Phase 02 – Planning**
+### **Phase 02 – Plan (Super-Phase)**
 Develop architecture, flow diagrams, and technical decisions.
 
 Reference:
-- /prompts/literal/02_phase_planning/
+- /prompts/literal/02_superphases/01_plan.md
 - /prompts/system/02_planning_loop.md
 
 Inline action:
@@ -58,12 +64,12 @@ Cursor, verify all external dependencies are clearly defined and listed in sourc
 
 ---
 
-### **Phase 03 – Building**
+### **Phase 03 – Build (Super-Phase)**
 Implement the defined feature or phase deliverable.
 
 Reference:
-- /prompts/literal/03_phase_building/
-- /prompts/system/03_building_loop.md
+- /prompts/literal/02_superphases/02_build.md
+- /prompts/system/04_build_loop.md
 
 Inline action:
 Cursor, let’s begin implementing this phase using the Build Loop Template.
@@ -74,31 +80,31 @@ Pause before full execution to confirm your interpretation if any assumption is 
 
 At phase closure, run:
 “Cursor, verify all implemented features through automated and integration tests before checkpoint commit.
-Use /prompts/literal/05_reflection/run_tests.md for structure.”
+Use /prompts/literal/04_pre-submission/rubric_verification.md for structure.”
 
 ---
 
-### **Phase 04 – Debugging**
+### **Phase 04 – Debug**
 Stabilize the build, identify and fix defects, and confirm reliability.
 
 Reference:
-- /prompts/literal/04_phase_debugging/
-- /prompts/system/04_debugging_loop.md
+- /prompts/literal/03_phases/05_debugging/* (legacy granular prompts)
+- /prompts/system/06_debugging_loop.md
 
 Inline action:
 Cursor, analyze test results and error logs for regressions.
 If two fixes fail consecutively, revert to the previous checkpoint and start a focused recovery tab.
 After resolving bugs, confirm with:
-“Cursor, rerun full tests using /prompts/literal/05_reflection/run_tests.md to validate stability.”
+“Cursor, rerun full tests using /prompts/literal/04_pre-submission/rubric_verification.md to validate stability.”
 
 ---
 
-### **Phase 05 – Reflection**
+### **Phase 05 – Reflect (Super-Phase)**
 Capture learnings, summarize progress, and prepare for next-phase handoff.
 
 Reference:
-- /prompts/literal/05_phase_reflection/
-- /prompts/system/05_reflection_loop.md
+- /prompts/literal/02_superphases/03_reflect.md
+- /prompts/system/07_reflection_loop.md
 
 Inline action:
 Cursor, create a reflection summary outlining what worked, what didn’t, and what should change next phase.
@@ -111,8 +117,8 @@ Then verify test coverage and confirm readiness for handoff.
 Finalize and stabilize deliverables for deployment or next project cycle.
 
 Reference:
-- /prompts/literal/06_phase_handoff/
-- /prompts/system/06_handoff_loop.md
+- /prompts/literal/04_pre-submission/rubric_verification.md
+- /prompts/system/08_context_summary_template.md
 
 Inline action:
 Cursor, perform final QA on all features, confirm passing test suite, and create the release checklist.
@@ -145,10 +151,10 @@ Confirm project completion by summarizing the build in docs/source_of_truth.md.
 Testing is continuous, not an afterthought.  
 
 Key expectations per phase:
-- **Build Phase:** Generate unit + integration tests alongside implementation.  
-- **Debugging Phase:** Confirm all failing tests pass before proceeding.  
-- **Reflection Phase:** Run full test suite and summarize metrics.  
-- **Handoff Phase:** Perform regression tests and smoke checks.
+- **Build (Super-Phase):** Generate unit + integration tests alongside implementation.  
+- **Debug:** Confirm all failing tests pass before proceeding.  
+- **Reflect (Super-Phase):** Run full test suite and summarize metrics.  
+- **Handoff:** Perform regression tests and smoke checks.
 
 Inline universal testing prompt:
 Cursor, review test coverage and generate missing tests for all critical paths before phase closure.

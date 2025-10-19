@@ -1,4 +1,6 @@
-# Foundry Showcase System
+# Showcase System (Technical)
+
+> See `/docs/operations/showcase_overview.md` for the operational overview and usage. This file focuses on technical details and implementation notes.
 
 A reusable capture pipeline for high-quality demonstration videos and summaries. Ideal for Gauntlet submissions and portfolio showcases.
 

@@ -1,3 +1,5 @@
+> Note: Foundry Core v2 prefers super-phase prompts in `/prompts/literal/02_superphases/` (Plan/Build/Reflect). This file remains available as a granular option.
+
 **When to use**: After completing a Build phase and passing functional smoke tests, before entering Testing or Debug.  
 **When not to use**: During early development or active building — only use once the UI is implemented and stable.  
 

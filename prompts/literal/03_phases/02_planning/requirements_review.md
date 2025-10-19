@@ -1,3 +1,5 @@
+> Note: Foundry Core v2 prefers super-phase prompts in `/prompts/literal/02_superphases/` (Plan/Build/Reflect). This file remains available as a granular option.
+
 **When to use**: When verifying or clarifying the PRD and functional requirements before implementation.
 **When not to use**: When requirements are already finalized and the team is ready to build — use “Begin Build” instead.
 

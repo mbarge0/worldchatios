@@ -1,3 +1,5 @@
+> Note: Foundry Core v2 prefers super-phase prompts in `/prompts/literal/02_superphases/` (Plan/Build/Reflect). This file remains available as a granular option.
+
 **When to use**: After completing a module’s build phase to verify functionality, stability, and completeness before reflection or handoff.  
 **When not to use**: During active development or while addressing a critical production bug — use “Intense Fix” or “Surgical Fix” instead.
 

@@ -1,3 +1,5 @@
+> Note: Foundry Core v2 prefers super-phase prompts in `/prompts/literal/02_superphases/` (Plan/Build/Reflect). This file remains available as a granular option.
+
 **When to use**: When a major functionality issue or system-level bug requires a broad repair or partial rewrite.
 **When not to use**: When a small change will resolve the issue — use “Surgical Fix” instead.
 

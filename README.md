@@ -28,5 +28,9 @@ SKIP_VISUAL=1 pnpm debug   # skip visual verification
 ### Docs
 See `/docs/index.md`, `/docs/context_management_playbook.md`, and `/docs/operations/` for workflows. New work goes into `/docs/operations/recent/`; move completed artifacts to `/docs/operations/archive/`.
 
+- Motion System: `/docs/operations/motion_system.md`
+- Showcase Overview: `/docs/operations/showcase_overview.md`
+- Operational Systems Index: `/docs/operations/meta_index.md`
+
 ### License
 MIT © 2025 Matt Barge

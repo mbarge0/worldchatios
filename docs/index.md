@@ -37,6 +37,10 @@ Reusable building blocks for weekly Gauntlet projects.
 | **retrospective.md** | Captures recurring patterns, insights, and process improvements over time. |
 | **reflections/** | Contains phase-based reflection outputs and summaries generated during builds. Each file aligns with a corresponding phase literal prompt. |
 
+**Super-Phase Model & Storage Policy**  
+Use Plan → Build → Reflect prompts (`/prompts/literal/02_superphases/`).  
+Write active outputs to `/docs/operations/phases/recent/`; move completed sets to `/docs/operations/phases/archive/`.
+
 ---
 
 ## Prompt System
@@ -45,9 +49,9 @@ This system defines how you communicate with Cursor — using literal prompts fo
 ### Literal Prompts
 | Directory | Description |
 |------------|--------------|
-| **/prompts/literal/** | Contains ready-to-copy, plain-language prompts for direct use in Cursor. Each folder corresponds to a development phase. |
+| **/prompts/literal/** | Contains ready-to-copy, plain-language prompts for direct use in Cursor. Use **02_superphases** for the preferred v2 cadence. |
 
-**Phase Folders**
+**Phase Folders (legacy granular toolkit)**
 1. `01_phase_start`  
 2. `02_phase_planning`  
 3. `03_phase_building`  
@@ -63,11 +67,20 @@ This system defines how you communicate with Cursor — using literal prompts fo
 
 ---
 
-## Design & Testing
+## Design, Motion & Testing
 | File | Description |
 |------|--------------|
 | **ui_guidelines.md** | Defines the UI/UX design principles, component standards, and interface quality workflow. |
+| **motion_system.md** | Operational overview of the Foundry Motion System (defaults, usage, verification notes). |
 | **testing_expectations.md** | Specifies your testing philosophy, minimum coverage, validation procedures, and phase-level integration testing expectations. |
+
+---
+
+## Showcase & Verification
+| File | Description |
+|------|--------------|
+| **showcase_overview.md** | Overview for the Foundry Showcase System (config, run flow, outputs). |
+| **verification/** | Evidence storage and verification docs (visual/evolvr). |
 
 ---
 
@@ -105,9 +118,9 @@ This system defines how you communicate with Cursor — using literal prompts fo
 ## How to Use This System
 1. **Start each Gauntlet week** by copying templates from `/docs/templates/`.  
 2. **Load the context** by reading `context.md` and `context_management_playbook.md`.  
-3. **Follow the six-phase prompt system**: use literal prompts with their corresponding system templates.  
+3. **Use super-phase prompts** for v2 (Plan → Build → Reflect).  
 4. **Track updates** in `iteration_log.md`, `source_of_truth.md`, and `weekly_report.md`.  
-5. **Use the reflections folder** to store phase summaries and checkpoints.  
+5. **Use the phase reports** under `/docs/operations/phases/` (`/recent` during active work; move to `/archive` when done).  
 6. **Commit and checkpoint** after every major phase.
 
 This documentation and prompt framework is your operational backbone.  

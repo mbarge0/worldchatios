@@ -1,3 +1,5 @@
+> Note: Foundry Core v2 prefers super-phase prompts in `/prompts/literal/02_superphases/` (Plan/Build/Reflect). This file remains available as a granular option.
+
 **When to use:** When breaking down a large project or feature into smaller, actionable development tasks.
 **When not to use:** When individual tasks are already defined — use “Begin Build” instead.
 

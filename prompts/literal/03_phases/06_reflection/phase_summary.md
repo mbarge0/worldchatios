@@ -1,3 +1,5 @@
+> Note: Foundry Core v2 prefers super-phase prompts in `/prompts/literal/02_superphases/` (Plan/Build/Reflect). This file remains available as a granular option.
+
 **When to use**: When a development phase has just been completed and you want to summarize outcomes and key learnings.
 **When not to use**: When work is still ongoing or results are incomplete — use “Midpoint Status Check” instead.
 

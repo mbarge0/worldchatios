@@ -1,50 +1,48 @@
-# CollabCanvas — Project Context
+# Foundry Core v2 — Project Context
 
 ---
 
 ## 1) Purpose & Scope
-CollabCanvas is a Figma-like real-time collaborative design tool. The MVP delivers a multiplayer canvas (pan/zoom, rectangle and text, create/move/resize/rotate), labeled cursors, presence, autosave, and JSON export. The final phase adds an AI canvas agent (OpenAI function calling) that manipulates the canvas for all connected users.
+Foundry Core v2 is a reusable development framework for structured, AI-assisted, multi-phase projects with built-in verification, automation, and documentation systems. It provides a stable project skeleton, phase prompts, and operational tooling (debug, evolvr, visual verification, motion, and showcase) to accelerate new builds.
 
-References: `/docs/foundation/prd.md`, `/docs/foundation/architecture.md`, `/docs/foundation/dev_checklist.md`, `/docs/operations/regression/00_master_regression_manifest.md`.
+References: `/docs/foundation/prd.md`, `/docs/foundation/architecture.md`, `/docs/foundation/dev_checklist.md`, `/docs/operations/order_of_operations.md`.
 
 ---
 
 ## 2) Architecture Summary
 - Framework: Next.js (App Router), React, TypeScript
-- Rendering: Konva (react-konva)
-- State: Zustand
-- Backend: Firebase — Firestore (canvas/shapes), Realtime Database (presence/cursors)
-- Auth: Firebase Auth (Email/Password + Magic Link)
-- AI (Final): OpenAI (function calling via Next.js API)
-- Hosting: Vercel; Observability: Sentry (client)
+- Styling: Tailwind (base) + preferred UI libraries (optional)
+- State: Lightweight local state; downstream apps can choose state strategy
+- Integrations: OpenAI (optional), Firebase/Supabase scaffolding (templates only)
+- Observability: Sentry (optional)
+- Tooling: Evolvr loop, Visual verification, Motion system, Showcase system
 
 ---
 
-## 3) Current Sprint Snapshot (Week 1: Oct 13–19)
-- Goal: Deliver MVP modules (#1–#12) and deploy on Vercel
-- Completed: PRD, Architecture, Development Checklist, Master Regression Manifest
-- Next: Module #1 Environment & Tooling → #2 Authentication → #3 Routing & Shell
+## 3) Current Snapshot
+- Goal: Provide a clean, app-agnostic baseline that compiles
+- Included: Phase prompts (super-phase model), automation scripts, verification tools
+- Next adopter steps: Fill `.env.local`, wire real routes, extend verification selectors, implement app-specific docs
 
 ---
 
-## 4) Active Features, Tasks, and Prompts
-- Active features in scope: pan/zoom, rectangle + text, create/move/resize/rotate, multi-select, presence + labeled cursors, autosave to Firestore, JSON export, auth gate
-- Tasks underway: Module #1–#3 execution per `/docs/foundation/dev_checklist.md`
-- Prompts in use: Product Loop, Architecture Loop, Checklist Loop, Regression Manifest Generator
+## 4) Active Systems and Prompts
+- Systems: Debug (`pnpm debug`), Visual/Evolvr, Motion, Showcase, Evidence capture
+- Prompts: Super-phase prompts in `/prompts/literal/02_superphases/` and system prompts in `/prompts/system/`
+- Storage policy: New reports append to `/docs/operations/phases/recent/`; archive completed sets to `/archive/`
 
 ---
 
-## 5) Blockers & Known Issues
-- None currently identified
-- Risks: concurrency edge cases (LWW + locks), browser perf with 500+ nodes, AI latency limits
+## 5) Risks & Considerations
+- Ensure downstream apps generalize verification selectors and routes
+- Keep motion subtle and accessible
+- Maintain doc consistency with super-phase model and archive policy
 
 ---
 
-## 6) Checkpoints, Branches, and Links
-- Branching: `foundation` active; feature branches per module; PRs into `main`
-- Deployment: Vercel target (pending MVP deploy)
-- Key links:
-  - PRD: `/docs/foundation/prd.md`
-  - Architecture: `/docs/foundation/architecture.md`
-  - Dev Checklist: `/docs/foundation/dev_checklist.md`
-  - Master Regression Manifest: `/docs/operations/regression/00_master_regression_manifest.md`
+## 6) Checkpoints and Links
+- Order of Operations: `/docs/order_of_operations.md`
+- Foundation: `/docs/foundation/*`
+- Operations: `/docs/operations/*`
+- Prompts (system): `/prompts/system/*`
+- Prompts (literal): `/prompts/literal/*`

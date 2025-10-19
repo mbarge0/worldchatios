@@ -1,3 +1,5 @@
+> Note: Foundry Core v2 prefers super-phase prompts in `/prompts/literal/02_superphases/` (Plan/Build/Reflect). This file remains available as a granular option.
+
 **When to use**: Starting development for a new feature or system at the beginning of a fresh phase.
 **When not to use**: When you’re already mid-build or making targeted edits to existing code — use “Continue Build” or “Adjust Existing Code” instead.
 
