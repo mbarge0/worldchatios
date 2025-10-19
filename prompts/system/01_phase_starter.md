@@ -39,10 +39,7 @@ I’m starting a new phase of this project. Here’s the setup:
 
 ## Output Format
 
-The resulting document should be stored as:  
-`/docs/operations/phases/phase-{{phase-number}}-01-start.md`
-
-It should include the following sections:
+The resulting document should include the following sections:
 
 1. **Phase Overview**
    - Phase number, name, and date

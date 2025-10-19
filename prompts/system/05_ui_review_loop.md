@@ -20,7 +20,7 @@ We are now performing a **UI Review** for this phase.
 Please:
 
 1. Review the following reference materials:
-   - **UI Guidelines**: `/docs/foundation/ui-guidelines.md`
+   - **UI Guidelines**: `/docs/operations/ui-guidelines.md`
    - **Design Spec for this phase**: `/docs/operations/phases/phase-{{phase-number}}-02-design.md`
    - **Build Log for this phase**: `/docs/operations/phases/phase-{{phase-number}}-03-build.md`
 2. Evaluate the built interface against:

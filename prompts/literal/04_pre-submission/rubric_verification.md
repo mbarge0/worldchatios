@@ -13,6 +13,6 @@ Let’s perform a **Comprehensive Rubric Verification Review with Scoring** usin
 Save the result to: /docs/operations/verification/verification.md. If there is already a verification file, create a new file and title it the next available verification number ie /verification2.md
 
 ### **Template Reference**
-`/prompts/system/14_unified_rubric_verification_loop.md`
+`/prompts/system/12_unified_rubric_verification_loop.md`
 
-Project requirements located at: `/docs/requirements/requirements2.md`
+Project requirements located at: `/docs/requirements`

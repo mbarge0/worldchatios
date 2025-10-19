@@ -19,12 +19,12 @@ Describe what the interface should look and feel like — layout, spacing, color
 Use textual wireframes or short descriptions of visual hierarchy and component states (hover, focus, disabled).  
 Pause if any design or scope assumption needs clarification before build.
 
-Store the resulting report under `/docs/operations/phases/phase-XX-01-plan.md` Always store the plan report under a numbered phase file. If the current supermodule or module does not have a number, assign it the next available phase number from the development checklist.
+Store the resulting report under `/docs/operations/phases/recent/phase-XX-01-plan.md`. New work goes into `/docs/operations/phases/recent/`; move completed artifacts together to `/docs/operations/phases/archive/`. If the current supermodule or module does not have a number, assign it the next available phase number from the development checklist.
 
 **System Template references:**  
 - Phase Start Template: `/prompts/system/01_phase_starter.md`  
 - Planning Loop Template: `/prompts/system/02_planning_loop.md`  
-- Design Loop Template: `/prompts/system/09_design_loop.md`  
+- Design Loop Template: `/prompts/system/03_design_loop.md`  
 
 **Previous phase documentation:** `/docs/operations/phases/phase-XX-06-handoff.md`  
 **PRD, architecture, and dev checklist:** `/docs/foundation/`  

@@ -17,8 +17,8 @@ Summarize the current project state, confirm all documentation is up-to-date, an
 Verify deployment readiness and include all relevant instructions or environment variables for smooth transition.  
 List all resources (code branches, design specs, logs, etc.) that the next phase or team will need for continuity.
 
-Store the resulting report under `/docs/operations/phases/phase-XX-03-reflect.md`. Always store the plan report under a numbered phase file. If the current supermodule or module does not have a number, assign it the next available phase number from the development checklist.
+Store the resulting report under `/docs/operations/phases/phase-XX-03-reflect.md`. New work goes into `/docs/operations/phases/recent/`; move completed artifacts together to `/docs/operations/phases/archive/`. If the current supermodule or module does not have a number, assign it the next available phase number from the development checklist.
 
 **System Template references:**  
-- Reflection Loop Template: `/prompts/system/05_reflection_loop.md`  
-- Handoff Loop Template: `/prompts/system/06_context_summary_template.md`
+- Reflection Loop Template: `/prompts/system/07_reflection_loop.md`  
+- Handoff Loop Template: `/prompts/system/08_context_summary_template.md`
