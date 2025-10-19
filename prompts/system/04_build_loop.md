@@ -1,7 +1,8 @@
 ## Metadata
 - **Phase:** {{phase-number}}
 - **Mode:** Agent
-- **Output Path:** `/docs/operations/phases/phase-{{phase-number}}-03-build.md`
+- **Merge Mode:** Append
+- **Output Path:** `/docs/operations/phases/recent/phase-{{phase-number}}-build.md`
 
 ---
 
@@ -44,15 +45,15 @@ Please:
 
 ## Output Format
 
-The resulting document should be stored as:  
-`/docs/operations/phases/phase-{{phase-number}}-03-build.md`
+Output Storage
+Store the resulting report under /docs/operations/phases/recent/phase-XX-01-plan.md (or the relevant file for Build or Reflect).
+New work always goes into /docs/operations/phases/recent/.
+When a phase is completed or superseded, move the entire set of related artifacts from /recent/ to /archive/.
+If the current supermodule or module does not have a number, assign it the next available phase number from the Development Checklist.
 
-If `phase-{{phase-number}}-03-build.md` already exists, 
-append new session entries under a heading:
-### Continuation Session {{continuation-id}}
-instead of overwriting the file.
-Preserve all previous session logs.
-Once the information has been appended, review the entire build log once more to ensure the document is completely up-to-date.
+If multiple system prompts (like Start, Plan, and Design) are run for the same super phase, they should all append to the same file.
+Each should begin with a labeled heading (e.g., ## Start, ## Plan, ## Design, ## Build, etc.).
+The combined file serves as the complete report for that super phase.
 
 The build log should include the following sections:
 

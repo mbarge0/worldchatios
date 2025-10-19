@@ -1,7 +1,8 @@
 ## Metadata
 - **Phase:** {{phase-number}}
 - **Mode:** Ask
-- **Output Path:** `/docs/operations/phases/phase-{{phase-number}}-06-handoff.md`
+- **Merge Mode:** Append
+- **Output Path:** `/docs/operations/phases/recent/phase-{{phase-number}}-reflect.md`
 
 ---
 
@@ -42,8 +43,15 @@ This document will act as the **source context** for the next Phase Starter prom
 
 ## Output Format
 
-The resulting document should be stored as:  
-`/docs/operations/phases/phase-{{phase-number}}-06-handoff.md`
+Output Storage
+Store the resulting report under /docs/operations/phases/recent/phase-XX-01-plan.md (or the relevant file for Build or Reflect).
+New work always goes into /docs/operations/phases/recent/.
+When a phase is completed or superseded, move the entire set of related artifacts from /recent/ to /archive/.
+If the current supermodule or module does not have a number, assign it the next available phase number from the Development Checklist.
+
+If multiple system prompts (like Start, Plan, and Design) are run for the same super phase, they should all append to the same file.
+Each should begin with a labeled heading (e.g., ## Start, ## Plan, ## Design, ## Build, etc.).
+The combined file serves as the complete report for that super phase.
 
 It should include the following sections:
 
