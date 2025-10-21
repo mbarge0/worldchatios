@@ -1,48 +1,42 @@
-# Foundry Core v2 — Project Context
+# Project Context — WorldChat (SwiftUI + Firebase)
 
----
+## 1. Project Overview
+WorldChat is an AI-powered iOS messaging app that enables real-time multilingual conversations for international travelers and expats. The product goal is WhatsApp‑grade reliability with automatic, inline translation and post‑MVP AI assistance that teaches through conversation. Target users: iPhone users (iOS 16+) communicating across languages who need accurate, fast, and culturally aware messaging.
 
-## 1) Purpose & Scope
-Foundry Core v2 is a reusable development framework for structured, AI-assisted, multi-phase projects with built-in verification, automation, and documentation systems. It provides a stable project skeleton, phase prompts, and operational tooling (debug, evolvr, visual verification, motion, and showcase) to accelerate new builds.
+## 2. Architecture Summary
+- Client: SwiftUI (MVVM with Combine), Swift 5.9+, iOS 16+
+- State: `@State`, `@EnvironmentObject`; SwiftData (offline cache, planned MVP)
+- Backend: Firebase (Auth, Firestore, Realtime Database for typing, Storage, Cloud Functions, FCM)
+- AI/Translation: Google Cloud Translation via Functions (MVP), OpenAI GPT‑4 via Functions (post‑MVP)
+- Supermodules:
+  - MVP: Platform, Identity & Data Services; Messaging & Collaboration (includes translation + notifications)
+  - Post‑MVP: AI Assistant & Smart Replies; Speech & Learning Analytics
+- Data entities: Users, Conversations, Messages (status lifecycle and per‑recipient translations), Translation Cache, Typing Indicators
 
-References: `/docs/foundation/prd.md`, `/docs/foundation/architecture.md`, `/docs/foundation/dev_checklist.md`, `/docs/operations/order_of_operations.md`.
+## 3. Active Sprint / Phase
+- Sprint: Week 1 Gauntlet AI (MVP → Final)
+- Timeline: MVP tonight; Final submission Sunday 10:59 PM CT
+- Deliverables (MVP):
+  - Auth (email/password), profile bootstrap
+  - 1:1 messaging with delivery states, read receipts, presence, typing
+  - Inline translation (Cloud Function + cache)
+  - Offline read + queue/replay (SwiftData), foreground notifications
+- In progress: Core UI setup, messaging prototype, Cloud Functions scaffolding
 
----
+## 4. Known Issues / Blockers
+- APNs background notifications pending setup; MVP uses foreground notifications
+- Offline cache write‑back ordering must be reconciled by server timestamps
+- Translation failures must gracefully fall back to original text
+- Typing indicators debounce/clear tuning to avoid false positives
+- TestFlight review timing risk; contingency: local build + screen recording
 
-## 2) Architecture Summary
-- Framework: Next.js (App Router), React, TypeScript
-- Styling: Tailwind (base) + preferred UI libraries (optional)
-- State: Lightweight local state; downstream apps can choose state strategy
-- Integrations: OpenAI (optional), Firebase/Supabase scaffolding (templates only)
-- Observability: Sentry (optional)
-- Tooling: Evolvr loop, Visual verification, Motion system, Showcase system
+## 5. Prompts and Workflows in Use
+- System: Architecture Loop (`/prompts/system/00_b_architecture_loop.md`), Context Loop (`/prompts/system/00_d_context_generation.md`), Regression Manifest (`/prompts/system/utilities/10_regression_manifest.md`)
+- Literal: Foundation planning, architecture planning, design guidelines, regression checklist (under `/prompts/literal/01_foundation/`)
+- Core docs: `docs/foundation/architecture.md`, `tech_stack.md`, `user_flows.md`, `docs/operations/regression/00_master_regression_manifest.md`
 
----
+## 6. Checkpoint Tag
+- Last stable checkpoint: Phase 02 (Messaging & Collaboration MVP groundwork established)
+- Commit/tag reference: set at creation time of regression manifest and architecture rewrite
 
-## 3) Current Snapshot
-- Goal: Provide a clean, app-agnostic baseline that compiles
-- Included: Phase prompts (super-phase model), automation scripts, verification tools
-- Next adopter steps: Fill `.env.local`, wire real routes, extend verification selectors, implement app-specific docs
-
----
-
-## 4) Active Systems and Prompts
-- Systems: Debug (`pnpm debug`), Visual/Evolvr, Motion, Showcase, Evidence capture
-- Prompts: Super-phase prompts in `/prompts/literal/02_superphases/` and system prompts in `/prompts/system/`
-- Storage policy: New reports append to `/docs/operations/phases/recent/`; archive completed sets to `/archive/`
-
----
-
-## 5) Risks & Considerations
-- Ensure downstream apps generalize verification selectors and routes
-- Keep motion subtle and accessible
-- Maintain doc consistency with super-phase model and archive policy
-
----
-
-## 6) Checkpoints and Links
-- Order of Operations: `/docs/order_of_operations.md`
-- Foundation: `/docs/foundation/*`
-- Operations: `/docs/operations/*`
-- Prompts (system): `/prompts/system/*`
-- Prompts (literal): `/prompts/literal/*`
+# End of context.md — generated [timestamp]
