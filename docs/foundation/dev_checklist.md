@@ -26,9 +26,9 @@ Description: App shell, Firebase setup, auth, profiles, language prefs, local ca
   - Testing: console verification
 
 [Build]
-- A.3 Initialize SwiftUI app with NavigationStack and SessionStore
+- A.3 (Revised) Initialize UIKit app with SceneDelegate and Firebase Auth routing
   - Dependencies: A.1
-  - Acceptance: App launches to Login or Conversations based on auth
+  - Acceptance: App launches to LoginViewController or ConversationsViewController based on auth
   - Testing: UI smoke test
 - A.4 Integrate Firebase via SwiftPM; add `GoogleService-Info.plist`
   - Dependencies: A.2
