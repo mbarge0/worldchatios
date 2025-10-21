@@ -17,7 +17,7 @@ struct WorldChatApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            AppShell()
         }
     }
 }
