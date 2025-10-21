@@ -1,43 +1,115 @@
 import UIKit
 import FirebaseAuth
+import FirebaseFirestore
 
-final class ConversationsViewController: UIViewController {
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        title = "Conversations"
-        view.backgroundColor = .systemBackground
+final class ConversationsViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
+	private let tableView = UITableView(frame: .zero, style: .plain)
+	private let emptyLabel = UILabel()
+	private let messaging = MessagingService()
+	private var conversations: [Conversation] = []
+	private var listener: ListenerRegistration?
 
-        let label = UILabel()
-        label.text = "Messaging module will appear here in Phase B."
-        label.numberOfLines = 0
-        label.textAlignment = .center
-        label.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(label)
-        NSLayoutConstraint.activate([
-            label.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            label.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            label.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 24),
-            label.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -24)
-        ])
+	override func viewDidLoad() {
+		super.viewDidLoad()
+		title = "Conversations"
+		view.backgroundColor = .systemBackground
 
-        navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Sign Out", style: .plain, target: self, action: #selector(didTapSignOut))
-    }
+		tableView.dataSource = self
+		tableView.delegate = self
+		tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
+		tableView.separatorColor = Theme.brandSecondary.withAlphaComponent(0.6)
+		tableView.translatesAutoresizingMaskIntoConstraints = false
+		view.addSubview(tableView)
+		NSLayoutConstraint.activate([
+			tableView.topAnchor.constraint(equalTo: view.topAnchor),
+			tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+			tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+			tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+		])
 
-    @objc private func didTapSignOut() {
-        do {
-            try Auth.auth().signOut()
-            print("🟦 [ConversationsVC] Signed out — returning to LoginViewController")
-            if let window = view.window ?? UIApplication.shared.windows.first {
-                let nav = UINavigationController(rootViewController: LoginViewController())
-                window.rootViewController = nav
-                window.makeKeyAndVisible()
-            } else {
-                navigationController?.setViewControllers([LoginViewController()], animated: true)
-            }
-        } catch {
-            print("🔴 [ConversationsVC] Sign out failed: \(error)")
-        }
-    }
+		emptyLabel.text = "Start a conversation"
+		emptyLabel.textAlignment = .center
+		emptyLabel.textColor = Theme.brandPrimary
+		emptyLabel.translatesAutoresizingMaskIntoConstraints = false
+		view.addSubview(emptyLabel)
+		NSLayoutConstraint.activate([
+			emptyLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+			emptyLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+		])
+
+		navigationItem.leftBarButtonItem = UIBarButtonItem(title: "Sign Out", style: .plain, target: self, action: #selector(didTapSignOut))
+		navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(didTapNew))
+
+		attachListener()
+	}
+
+	private func attachListener() {
+		guard let uid = Auth.auth().currentUser?.uid else { return }
+		listener = messaging.listenConversations(for: uid) { [weak self] items in
+			self?.conversations = items
+			self?.tableView.reloadData()
+			self?.emptyLabel.isHidden = !items.isEmpty
+		}
+	}
+
+	deinit { listener?.remove() }
+
+	@objc private func didTapSignOut() {
+		do {
+			try Auth.auth().signOut()
+			print("🟦 [ConversationsVC] Signed out — returning to LoginViewController")
+			if let window = view.window ?? UIApplication.shared.windows.first {
+				let nav = UINavigationController(rootViewController: LoginViewController())
+				window.rootViewController = nav
+				window.makeKeyAndVisible()
+			} else {
+				navigationController?.setViewControllers([LoginViewController()], animated: true)
+			}
+		} catch {
+			print("🔴 [ConversationsVC] Sign out failed: \(error)")
+		}
+	}
+
+	@objc private func didTapNew() {
+		let alert = UIAlertController(title: "New Conversation", message: "Enter other user's UID for MVP", preferredStyle: .alert)
+		alert.addTextField { $0.placeholder = "other user id" }
+		alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+		alert.addAction(UIAlertAction(title: "Create", style: .default, handler: { [weak self] _ in
+			guard let self = self, let other = alert.textFields?.first?.text, !other.isEmpty else { return }
+			self.messaging.createConversation(with: other) { result in
+				if case let .failure(error) = result { print("🔴 createConversation error: \(error)") }
+			}
+		}))
+		present(alert, animated: true)
+	}
+
+	// MARK: - Table
+
+	func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { conversations.count }
+
+	func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+		let c = conversations[indexPath.row]
+		let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
+		var config = UIListContentConfiguration.subtitleCell()
+		config.text = c.title
+		config.textProperties.font = .systemFont(ofSize: 17, weight: .semibold)
+		config.textProperties.color = Theme.brandPrimary
+		if let text = c.lastMessage { config.secondaryText = text }
+		config.secondaryTextProperties.color = Theme.textMuted
+		cell.contentConfiguration = config
+		let chevron = UIImage(systemName: "chevron.right")?.withTintColor(Theme.brandSecondary, renderingMode: .alwaysOriginal)
+		cell.accessoryView = UIImageView(image: chevron)
+		cell.selectionStyle = .default
+		return cell
+	}
+
+	func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+		tableView.deselectRow(at: indexPath, animated: true)
+		let convo = conversations[indexPath.row]
+		let current = Auth.auth().currentUser?.uid ?? ""
+		let other = convo.participants.first(where: { $0 != current }) ?? ""
+		navigationController?.pushViewController(ChatViewController(conversationId: convo.id, otherUserId: other), animated: true)
+	}
 }
 
 
