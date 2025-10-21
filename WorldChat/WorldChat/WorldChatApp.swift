@@ -2,21 +2,20 @@
 //  WorldChatApp.swift
 //  WorldChat
 //
-//  Created by Matthew Barge on 10/21/25.
-//
 
 import SwiftUI
 import FirebaseCore
 
 @main
 struct WorldChatApp: App {
-    // Configure Firebase at launch
     init() {
-        FirebaseApp.configure()
+        // Initialize Firebase once, synchronously, and signal readiness
+        FirebaseBoot.configureIfNeededAndSignal()
     }
 
     var body: some Scene {
         WindowGroup {
+            // Start with your login screen or AppShell
             AppShell()
         }
     }

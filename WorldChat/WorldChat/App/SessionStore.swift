@@ -11,9 +11,16 @@ final class SessionStore: ObservableObject {
 	private var authStateHandle: AuthStateDidChangeListenerHandle?
     private let profileService = ProfileService()
     private let cache = LocalCacheService()
+    private var isFirebaseReady = false
+    private var cancellable: Any?
 
 	init() {
-		observeAuthState()
+		// Wait for Firebase boot before touching Auth
+		cancellable = NotificationCenter.default.addObserver(forName: FirebaseBoot.didConfigure, object: nil, queue: .main) { [weak self] _ in
+			guard let self else { return }
+			self.isFirebaseReady = true
+			self.observeAuthState()
+		}
 	}
 
 	deinit {
@@ -23,6 +30,7 @@ final class SessionStore: ObservableObject {
 	}
 
 	private func observeAuthState() {
+		guard isFirebaseReady else { return }
 		authStateHandle = Auth.auth().addStateDidChangeListener { [weak self] _, user in
 			self?.currentUserId = user?.uid
 			self?.isAuthenticated = user != nil
