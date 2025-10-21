@@ -12,6 +12,7 @@
 		0443A1712EA7E95B00F4431C /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 0443A1702EA7E95B00F4431C /* FirebaseFirestore */; };
 		0443A1732EA7E95B00F4431C /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 0443A1722EA7E95B00F4431C /* FirebaseMessaging */; };
 		0443A1752EA7E95B00F4431C /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 0443A1742EA7E95B00F4431C /* FirebaseStorage */; };
+		0443A1AC2EA7FF4400F4431C /* FirebaseDatabase in Frameworks */ = {isa = PBXBuildFile; productRef = 0443A1AB2EA7FF4400F4431C /* FirebaseDatabase */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -60,6 +61,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0443A1AC2EA7FF4400F4431C /* FirebaseDatabase in Frameworks */,
 				0443A1732EA7E95B00F4431C /* FirebaseMessaging in Frameworks */,
 				0443A16D2EA7E95B00F4431C /* FirebaseAnalytics in Frameworks */,
 				0443A16F2EA7E95B00F4431C /* FirebaseAuth in Frameworks */,
@@ -91,6 +93,7 @@
 				0443A1402EA7DB5500F4431C /* WorldChat */,
 				0443A1512EA7DB5700F4431C /* WorldChatTests */,
 				0443A15B2EA7DB5700F4431C /* WorldChatUITests */,
+				0443A1AA2EA7FF4400F4431C /* Frameworks */,
 				0443A13F2EA7DB5500F4431C /* Products */,
 			);
 			sourceTree = "<group>";
@@ -103,6 +106,13 @@
 				0443A1582EA7DB5700F4431C /* WorldChatUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		0443A1AA2EA7FF4400F4431C /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -130,6 +140,7 @@
 				0443A1702EA7E95B00F4431C /* FirebaseFirestore */,
 				0443A1722EA7E95B00F4431C /* FirebaseMessaging */,
 				0443A1742EA7E95B00F4431C /* FirebaseStorage */,
+				0443A1AB2EA7FF4400F4431C /* FirebaseDatabase */,
 			);
 			productName = WorldChat;
 			productReference = 0443A13E2EA7DB5500F4431C /* WorldChat.app */;
@@ -616,6 +627,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 0443A16B2EA7E95B00F4431C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseStorage;
+		};
+		0443A1AB2EA7FF4400F4431C /* FirebaseDatabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 0443A16B2EA7E95B00F4431C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseDatabase;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

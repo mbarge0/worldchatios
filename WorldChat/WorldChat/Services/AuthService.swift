@@ -20,7 +20,7 @@ final class AuthService {
 enum AuthErrorMapper {
 	static func message(for error: Error) -> String {
 		let ns = error as NSError
-		switch AuthErrorCode.Code(rawValue: ns.code) {
+		switch AuthErrorCode(rawValue: ns.code) {
 		case .wrongPassword: return "Invalid credentials. Please try again."
 		case .userNotFound: return "No account found for this email."
 		case .emailAlreadyInUse: return "Email already in use."
