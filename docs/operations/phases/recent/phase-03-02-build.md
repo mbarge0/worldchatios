@@ -208,3 +208,7 @@ Stability
 
 Next
 - Run two-device latency/read verification and B.R8 scripted burst; capture logs.
+
+### Test Assets
+- Two-device timing & burst instructions: `/docs/operations/tests/phase-03-device-tests.md`
+- Burst script: `/scripts/burst-messages.ts` (requires Firebase Admin creds)
