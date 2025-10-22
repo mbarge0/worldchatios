@@ -248,6 +248,7 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 }
 
 final class MessageCell: UICollectionViewCell {
+	private let avatarView = UIImageView()
 	private let bubble = UIView()
 	private let label = UILabel()
 	private let translationLabel = UILabel()
@@ -259,6 +260,13 @@ final class MessageCell: UICollectionViewCell {
 
 	override init(frame: CGRect) {
 		super.init(frame: frame)
+		contentView.addSubview(avatarView)
+		avatarView.translatesAutoresizingMaskIntoConstraints = false
+		avatarView.layer.cornerRadius = 14
+		avatarView.clipsToBounds = true
+		avatarView.backgroundColor = .secondarySystemBackground
+		avatarView.isHidden = true
+
 		contentView.addSubview(bubble)
 		bubble.translatesAutoresizingMaskIntoConstraints = false
 		bubble.layer.cornerRadius = 16
@@ -280,11 +288,16 @@ final class MessageCell: UICollectionViewCell {
 		bubble.addSubview(imageView)
 		bubble.addSubview(sublabel)
 
-		leadingConstraint = bubble.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16)
+		leadingConstraint = bubble.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 40)
 		trailingConstraint = bubble.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16)
 		maxWidthConstraint = bubble.widthAnchor.constraint(lessThanOrEqualToConstant: 280)
 
 		NSLayoutConstraint.activate([
+			avatarView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 8),
+			avatarView.bottomAnchor.constraint(equalTo: bubble.bottomAnchor),
+			avatarView.widthAnchor.constraint(equalToConstant: 28),
+			avatarView.heightAnchor.constraint(equalToConstant: 28),
+
 			leadingConstraint!, trailingConstraint!, maxWidthConstraint!,
 			bubble.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 4),
 			bubble.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -4),
@@ -333,5 +346,13 @@ final class MessageCell: UICollectionViewCell {
 		bubble.layer.maskedCorners = isOutgoing ? [.layerMinXMinYCorner, .layerMinXMaxYCorner, .layerMaxXMinYCorner] : [.layerMaxXMinYCorner, .layerMaxXMaxYCorner, .layerMinXMinYCorner]
 		leadingConstraint.isActive = !isOutgoing
 		trailingConstraint.isActive = isOutgoing
+		avatarView.isHidden = isOutgoing
+	}
+
+	func setAvatarURL(_ urlString: String?) {
+		guard let s = urlString, let url = URL(string: s) else { avatarView.isHidden = true; return }
+		URLSession.shared.dataTask(with: url) { data, _, _ in
+			if let d = data, let img = UIImage(data: d) { DispatchQueue.main.async { self.avatarView.image = img; self.avatarView.isHidden = false } }
+		}.resume()
 	}
 }

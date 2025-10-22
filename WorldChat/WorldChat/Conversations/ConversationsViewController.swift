@@ -1,6 +1,7 @@
 import UIKit
 import FirebaseAuth
 import FirebaseFirestore
+import FirebaseDatabase
 
 final class ConversationsViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
 	private let tableView = UITableView(frame: .zero, style: .plain)
@@ -10,6 +11,9 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 	private var listener: ListenerRegistration?
 	private var presenceListeners: [String: ListenerRegistration] = [:]
 	private var userIdToOnline: [String: Bool] = [:]
+	private var typingHandles: [String: DatabaseHandle] = [:]
+	private var conversationIdToTyping: [String: Bool] = [:]
+	private var userIdToAvatarURL: [String: String] = [:]
 
 	override func viewDidLoad() {
 		super.viewDidLoad()
@@ -41,7 +45,8 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 			emptyLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor)
 		])
 
-		navigationItem.leftBarButtonItem = UIBarButtonItem(title: "Sign Out", style: .plain, target: self, action: #selector(didTapSignOut))
+		let menu = UIBarButtonItem(image: UIImage(systemName: "line.3.horizontal"), style: .plain, target: self, action: #selector(openMenu))
+		navigationItem.leftBarButtonItem = menu
 		navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(didTapNew))
 
 		attachConversationsListener()
@@ -56,6 +61,8 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 		super.viewWillDisappear(animated)
 		presenceListeners.values.forEach { $0.remove() }
 		presenceListeners.removeAll()
+		typingHandles.forEach { FirebaseService.realtimeDB.reference().removeObserver(withHandle: $0.value) }
+		typingHandles.removeAll()
 	}
 
 	private func attachConversationsListener() {
@@ -69,10 +76,26 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 		}
 	}
 
+	private func fetchAvatarsForParticipants() {
+		let current = Auth.auth().currentUser?.uid ?? ""
+		let participantIds = Set(conversations.flatMap { $0.participants }.filter { $0 != current })
+		participantIds.forEach { uid in
+			FirebaseService.firestore.collection("users").document(uid).getDocument { [weak self] snap, _ in
+				guard let self = self, let data = snap?.data() else { return }
+				if let url = data["avatarUrl"] as? String { self.userIdToAvatarURL[uid] = url }
+			}
+		}
+	}
+
 	private func attachPresenceListeners() {
 		presenceListeners.values.forEach { $0.remove() }
 		presenceListeners.removeAll()
 		userIdToOnline.removeAll()
+		// typing
+		typingHandles.forEach { FirebaseService.realtimeDB.reference().removeObserver(withHandle: $0.value) }
+		typingHandles.removeAll()
+		conversationIdToTyping.removeAll()
+
 		let current = Auth.auth().currentUser?.uid ?? ""
 		let participantIds = Set(conversations.flatMap { $0.participants }.filter { $0 != current })
 		participantIds.forEach { uid in
@@ -90,6 +113,26 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 			}
 			presenceListeners[uid] = l
 		}
+
+		// Typing for each conversation: listen to other user's node
+		conversations.forEach { convo in
+			let other = convo.participants.first(where: { $0 != current }) ?? ""
+			let ref = FirebaseService.realtimeDB.reference(withPath: "typingIndicators/\(convo.id)/\(other)")
+			let handle = ref.observe(.value) { [weak self] snap in
+				guard let self = self else { return }
+				var isTyping = false
+				if let dict = snap.value as? [String: Any], let ts = dict["ts"] as? TimeInterval {
+					let now = Date().timeIntervalSince1970 * 1000.0
+					isTyping = (now - ts) < 1500
+				}
+				self.conversationIdToTyping[convo.id] = isTyping
+				if let visible = self.tableView.indexPathsForVisibleRows?.first(where: { self.conversations[$0.row].id == convo.id }) {
+					self.tableView.reloadRows(at: [visible], with: .none)
+				}
+			}
+			typingHandles[convo.id] = handle
+		}
+		fetchAvatarsForParticipants()
 	}
 
 	private func applyPresence(on cell: UITableViewCell, online: Bool) {
@@ -133,6 +176,18 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 		present(alert, animated: true)
 	}
 
+	@objc private func openMenu() {
+		let alert = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
+		alert.addAction(UIAlertAction(title: "Profile", style: .default, handler: { [weak self] _ in
+			self?.navigationController?.pushViewController(ProfileViewController(), animated: true)
+		}))
+		alert.addAction(UIAlertAction(title: "Sign Out", style: .destructive, handler: { [weak self] _ in
+			self?.didTapSignOut()
+		}))
+		alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+		present(alert, animated: true)
+	}
+
 	// MARK: - Table
 
 	func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { conversations.count }
@@ -140,15 +195,9 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 	func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
 		let c = conversations[indexPath.row]
 		let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
-		var config = UIListContentConfiguration.subtitleCell()
-		config.text = c.title
-		config.textProperties.font = .systemFont(ofSize: 17, weight: .semibold)
-		config.textProperties.color = Theme.brandPrimary
-		if let text = c.lastMessage { config.secondaryText = text }
-		config.secondaryTextProperties.color = Theme.textMuted
-		cell.contentConfiguration = config
 		let current = Auth.auth().currentUser?.uid ?? ""
 		let other = c.participants.first(where: { $0 != current }) ?? ""
+		_ = configuredCell(for: c, cell: cell)
 		let online = userIdToOnline[other] ?? false
 		applyPresence(on: cell, online: online)
 		return cell
@@ -160,6 +209,37 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 		let current = Auth.auth().currentUser?.uid ?? ""
 		let other = convo.participants.first(where: { $0 != current }) ?? ""
 		navigationController?.pushViewController(ChatViewController(conversationId: convo.id, otherUserId: other, chatTitle: convo.title), animated: true)
+	}
+
+	private func configuredCell(for conversation: Conversation, cell: UITableViewCell) -> UITableViewCell {
+		var config = UIListContentConfiguration.subtitleCell()
+		config.text = conversation.title
+		config.textProperties.font = .systemFont(ofSize: 17, weight: .semibold)
+		config.textProperties.color = Theme.brandPrimary
+		if conversationIdToTyping[conversation.id] == true {
+			config.secondaryText = "Typing…"
+			config.secondaryTextProperties.color = Theme.textMuted
+		} else if let text = conversation.lastMessage {
+			config.secondaryText = text
+			config.secondaryTextProperties.color = Theme.textMuted
+		}
+		let current = Auth.auth().currentUser?.uid ?? ""
+		let other = conversation.participants.first(where: { $0 != current }) ?? ""
+		if let urlStr = userIdToAvatarURL[other], let url = URL(string: urlStr) {
+			// Simple async load
+			URLSession.shared.dataTask(with: url) { data, _, _ in
+				if let d = data, let image = UIImage(data: d) {
+					DispatchQueue.main.async {
+						var cfg = config
+						cfg.image = image
+						cfg.imageProperties.cornerRadius = 22
+						cell.contentConfiguration = cfg
+					}
+				}
+			}.resume()
+		}
+		cell.contentConfiguration = config
+		return cell
 	}
 }
 
