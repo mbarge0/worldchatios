@@ -200,7 +200,22 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 	}
 
 	func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
-		CGSize(width: collectionView.bounds.width, height: UICollectionViewFlowLayout.automaticSize.height)
+		let maxWidth = collectionView.bounds.width * 0.75
+		let message = messages[indexPath.item]
+		let text = (message.text.isEmpty ? " " : message.text) as NSString
+		let attributes: [NSAttributedString.Key: Any] = [.font: UIFont.systemFont(ofSize: 17)]
+		let bounding = text.boundingRect(with: CGSize(width: maxWidth - 24 - 24, height: CGFloat.greatestFiniteMagnitude),
+									 options: [.usesLineFragmentOrigin, .usesFontLeading],
+									 attributes: attributes,
+									 context: nil)
+		let translation = (message.translations?["en"] ?? "") as NSString
+		let translationBounding = translation.boundingRect(with: CGSize(width: maxWidth - 24 - 24, height: CGFloat.greatestFiniteMagnitude),
+																 options: [.usesLineFragmentOrigin, .usesFontLeading],
+																 attributes: [.font: UIFont.systemFont(ofSize: 14)],
+																 context: nil)
+		let baseHeights: CGFloat = 10 + 6 + 6 + 8 // top padding + gaps + bottom
+		let height = max(44, ceil(bounding.height) + ceil(translationBounding.height) + baseHeights)
+		return CGSize(width: collectionView.bounds.width, height: height.isFinite ? height : 44)
 	}
 }
 

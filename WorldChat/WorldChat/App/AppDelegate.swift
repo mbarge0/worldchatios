@@ -6,10 +6,8 @@ import UserNotifications
 final class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate {
 	func application(_ application: UIApplication,
 					 didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
-		print("🟦 [AppDelegate] didFinishLaunchingWithOptions — configuring Firebase")
-		if FirebaseApp.app() == nil {
-			FirebaseApp.configure()
-		}
+		FirebaseApp.configure()
+		print("🟦 [AppDelegate] didFinishLaunchingWithOptions — Firebase configured")
 
 		// Brand navigation styling
 		let navAppearance = UINavigationBarAppearance()
