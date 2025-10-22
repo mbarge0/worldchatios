@@ -14,29 +14,31 @@ final class PresenceService {
 		self.database = database
 	}
 
-	// Preferred lifecycle-driven API
+	// Lifecycle-driven API
 	func start(for userId: String) {
-		// Firestore presence doc: online true + lastSeen
+		// Firestore: mark online
 		firestore.collection("presence").document(userId).setData([
 			"online": true,
 			"lastSeen": FieldValue.serverTimestamp()
 		], merge: true)
 
-		// RTDB user status with onDisconnect offline
-		let ref = database.reference(withPath: "status/\(userId)")
-		ref.setValue(["state": "online", "updatedAt": ServerValue.timestamp()])
-		ref.onDisconnectUpdateChildValues(["state": "offline", "updatedAt": ServerValue.timestamp()])
+		// RTDB: presence/{uid}
+		let ref = database.reference(withPath: "presence/\(userId)")
+		ref.setValue(["online": true, "lastSeen": ServerValue.timestamp()])
+		ref.onDisconnectUpdateChildValues(["online": false, "lastSeen": ServerValue.timestamp()])
 		userStatusRef = ref
 	}
 
 	func stop(for userId: String) {
+		// Firestore: mark offline
 		firestore.collection("presence").document(userId).setData([
 			"online": false,
 			"lastSeen": FieldValue.serverTimestamp()
 		], merge: true)
 
-		let ref = userStatusRef ?? database.reference(withPath: "status/\(userId)")
-		ref.updateChildValues(["state": "offline", "updatedAt": ServerValue.timestamp()])
+		// RTDB: mark offline immediately
+		let ref = userStatusRef ?? database.reference(withPath: "presence/\(userId)")
+		ref.updateChildValues(["online": false, "lastSeen": ServerValue.timestamp()])
 	}
 
 	// Backwards-compatible helpers

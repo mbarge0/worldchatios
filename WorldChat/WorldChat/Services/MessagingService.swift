@@ -187,11 +187,15 @@ final class MessagingService {
 		}
 	}
 
-	// Presence header convenience (Firestore presence collection)
-	func listenPresence(userId: String, onChange: @escaping (String) -> Void) -> ListenerRegistration {
-		firestore.collection("presence").document(userId).addSnapshotListener { snap, _ in
-			let status = (snap?.data()? ["status"] as? String) ?? "offline"
-			onChange(status)
+	// Presence header convenience (RTDB presence collection)
+	func listenPresence(userId: String, onChange: @escaping (String) -> Void) -> DatabaseHandle {
+		let ref = database.reference(withPath: "presence/\(userId)")
+		return ref.observe(.value) { snapshot in
+			if let dict = snapshot.value as? [String: Any], let online = dict["online"] as? Bool {
+				onChange(online ? "online" : "offline")
+			} else {
+				onChange("offline")
+			}
 		}
 	}
 }

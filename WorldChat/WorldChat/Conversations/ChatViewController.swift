@@ -13,7 +13,7 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 	private var messages: [Message] = []
 	private var listener: ListenerRegistration?
 	private var typingHandle: DatabaseHandle?
-	private var presenceListener: ListenerRegistration?
+	private var presenceHandle: DatabaseHandle?
 
 	private lazy var collectionView: UICollectionView = {
 		let layout = UICollectionViewFlowLayout()
@@ -152,15 +152,19 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 	}
 
 	private func attachPresenceListener() {
-		presenceListener?.remove()
-		presenceListener = messaging.listenPresence(userId: otherUserId) { [weak self] status in
+		if let presenceHandle = presenceHandle {
+			FirebaseService.realtimeDB.reference().removeObserver(withHandle: presenceHandle)
+		}
+		presenceHandle = messaging.listenPresence(userId: otherUserId) { [weak self] status in
 			self?.presenceDot.backgroundColor = (status == "online") ? .systemGreen : .systemGray
 		}
 	}
 
 	deinit {
 		listener?.remove()
-		presenceListener?.remove()
+		if let presenceHandle = presenceHandle {
+			FirebaseService.realtimeDB.reference().removeObserver(withHandle: presenceHandle)
+		}
 		if let typingHandle = typingHandle {
 			FirebaseService.realtimeDB.reference().removeObserver(withHandle: typingHandle)
 		}
