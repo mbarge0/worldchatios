@@ -1,13 +1,13 @@
-import crypto from "crypto";
-import * as admin from "firebase-admin";
-import * as functions from "firebase-functions";
-import OpenAI from "openai";
-admin.initializeApp();
-const db = admin.firestore();
-// Resolve OpenAI configuration with priority order:
-// 1) process.env
-// 2) functions.config().openai
-// Model falls back to "gpt-4o-mini" if neither is set
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.generateSmartReplies = exports.askAI = exports.openai = exports.OPENAI_MODEL = exports.OPENAI_API_KEY = void 0;
+const crypto = require("crypto");
+const { getApps, initializeApp } = require("firebase-admin/app");
+const { getAuth } = require("firebase-admin/auth");
+const { FieldValue, getFirestore } = require("firebase-admin/firestore");
+const functions = require("firebase-functions");
+const OpenAI = require("openai").default;
+// OpenAI configuration (immediately after imports)
 const runtimeConfig = (() => {
     try {
         return functions.config?.() ?? {};
@@ -17,12 +17,12 @@ const runtimeConfig = (() => {
     }
 })();
 const cfgOpenAI = runtimeConfig.openai || {};
-const RESOLVED_OPENAI_API_KEY = process.env.OPENAI_API_KEY || cfgOpenAI.key || "";
-if (!RESOLVED_OPENAI_API_KEY) {
-    throw new Error("Missing OpenAI API key. Set process.env.OPENAI_API_KEY or functions.config().openai.key");
-}
-const RESOLVED_OPENAI_MODEL = process.env.OPENAI_MODEL || cfgOpenAI.model || "gpt-4o-mini";
-const openai = new OpenAI({ apiKey: RESOLVED_OPENAI_API_KEY });
+exports.OPENAI_API_KEY = process.env.OPENAI_API_KEY || cfgOpenAI.key || "";
+exports.OPENAI_MODEL = process.env.OPENAI_MODEL || cfgOpenAI.model || "gpt-4o-mini";
+exports.openai = new OpenAI({ apiKey: exports.OPENAI_API_KEY });
+if (!getApps().length)
+    initializeApp();
+const db = getFirestore();
 async function fetchRecentMessages(conversationId, lastN) {
     const snap = await db.collection("conversations").doc(conversationId)
         .collection("messages").orderBy("timestamp", "desc").limit(lastN).get();
@@ -42,7 +42,7 @@ async function verifyAuth(req) {
     if (!authz || Array.isArray(authz))
         throw new Error("Missing Authorization");
     const token = authz.replace(/^Bearer\s+/i, "").trim();
-    const decoded = await admin.auth().verifyIdToken(token);
+    const decoded = await getAuth().verifyIdToken(token);
     return decoded.uid;
 }
 async function checkRateLimit(uid, key, limit) {
@@ -53,7 +53,7 @@ async function checkRateLimit(uid, key, limit) {
         const count = (snap.exists ? (snap.data()?.count || 0) : 0) + 1;
         if (count > limit)
             throw new Error("RATE_LIMIT");
-        tx.set(ref, { count, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+        tx.set(ref, { count, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
     });
 }
 async function readCache(cacheKey, maxAgeMs) {
@@ -69,13 +69,13 @@ async function readCache(cacheKey, maxAgeMs) {
 }
 async function writeCache(cacheKey, payload) {
     const ref = db.collection("ai_cache").doc(cacheKey);
-    await ref.set({ payload, createdAt: admin.firestore.FieldValue.serverTimestamp() });
+    await ref.set({ payload, createdAt: FieldValue.serverTimestamp() });
 }
-export const askAI = functions.https.onRequest(async (req, res) => {
+exports.askAI = functions.https.onRequest(async (req, res) => {
     try {
         const uid = await verifyAuth(req);
         const { conversationId, question, lastN = 20 } = req.body || {};
-        if (!OPENAI_API_KEY)
+        if (!exports.OPENAI_API_KEY)
             throw new Error("Missing OPENAI_API_KEY");
         if (!conversationId || !question) {
             res.status(400).json({ error: "conversationId and question are required" });
@@ -92,8 +92,8 @@ export const askAI = functions.https.onRequest(async (req, res) => {
         const system = "You are a language learning assistant. Explain vocabulary, grammar, idioms, and cultural context clearly.";
         const prompt = `${system}\n\nConversation (recent):\n${context}\n\nUser question: ${question}`;
         const start = Date.now();
-        const completion = await openai.chat.completions.create({
-            model: OPENAI_MODEL,
+        const completion = await exports.openai.chat.completions.create({
+            model: exports.OPENAI_MODEL,
             messages: [
                 { role: "system", content: system },
                 { role: "user", content: prompt },
@@ -115,11 +115,11 @@ export const askAI = functions.https.onRequest(async (req, res) => {
         res.status(500).json({ error: e?.message || "askAI failed" });
     }
 });
-export const generateSmartReplies = functions.https.onRequest(async (req, res) => {
+exports.generateSmartReplies = functions.https.onRequest(async (req, res) => {
     try {
         const uid = await verifyAuth(req);
         const { conversationId, tone = "neutral", lastN = 10 } = req.body || {};
-        if (!OPENAI_API_KEY)
+        if (!exports.OPENAI_API_KEY)
             throw new Error("Missing OPENAI_API_KEY");
         if (!conversationId) {
             res.status(400).json({ error: "conversationId is required" });
@@ -136,8 +136,8 @@ export const generateSmartReplies = functions.https.onRequest(async (req, res) =
         const system = `Generate 3 reply suggestions in both languages (original and target). Tone: ${tone}. Return JSON array of {original, translated}.`;
         const prompt = `${system}\n\nConversation (recent):\n${context}\n\nReturn only JSON array.`;
         const start = Date.now();
-        const completion = await openai.chat.completions.create({
-            model: OPENAI_MODEL,
+        const completion = await exports.openai.chat.completions.create({
+            model: exports.OPENAI_MODEL,
             messages: [
                 { role: "system", content: system },
                 { role: "user", content: prompt },

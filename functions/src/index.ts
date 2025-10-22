@@ -1,31 +1,28 @@
-import crypto from "crypto";
-import * as admin from "firebase-admin";
-import * as functions from "firebase-functions";
-import OpenAI from "openai";
+const crypto = require("crypto");
+import type { Request, Response } from "express";
+import type { DocumentData, DocumentReference, DocumentSnapshot, QueryDocumentSnapshot, Timestamp, Transaction } from "firebase-admin/firestore";
+const { getApps, initializeApp } = require("firebase-admin/app");
+const { getAuth } = require("firebase-admin/auth");
+const { FieldValue, getFirestore } = require("firebase-admin/firestore");
+const functions = require("firebase-functions");
+const OpenAI = require("openai").default;
 
-admin.initializeApp();
-const db = admin.firestore();
-
-// Resolve OpenAI configuration with priority order:
-// 1) process.env
-// 2) functions.config().openai
-// Model falls back to "gpt-4o-mini" if neither is set
+// OpenAI configuration (immediately after imports)
 const runtimeConfig = (() => {
     try { return functions.config?.() ?? {}; } catch { return {}; }
 })();
 const cfgOpenAI = (runtimeConfig as any).openai || {};
-const RESOLVED_OPENAI_API_KEY = process.env.OPENAI_API_KEY || cfgOpenAI.key || "";
-if (!RESOLVED_OPENAI_API_KEY) {
-    throw new Error("Missing OpenAI API key. Set process.env.OPENAI_API_KEY or functions.config().openai.key");
-}
-const RESOLVED_OPENAI_MODEL = process.env.OPENAI_MODEL || cfgOpenAI.model || "gpt-4o-mini";
+export const OPENAI_API_KEY: string = process.env.OPENAI_API_KEY || cfgOpenAI.key || "";
+export const OPENAI_MODEL: string = process.env.OPENAI_MODEL || cfgOpenAI.model || "gpt-4o-mini";
+export const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
-const openai = new OpenAI({ apiKey: RESOLVED_OPENAI_API_KEY });
+if (!getApps().length) initializeApp();
+const db = getFirestore();
 
 type MessageDoc = {
     senderId: string;
     text: string;
-    timestamp: FirebaseFirestore.Timestamp;
+    timestamp: Timestamp;
     translations?: Record<string, string>;
 };
 
@@ -34,7 +31,7 @@ async function fetchRecentMessages(conversationId: string, lastN: number): Promi
         .collection("messages").orderBy("timestamp", "desc").limit(lastN).get();
     const parts: string[] = [];
     let lastKey = "";
-    snap.forEach((doc) => {
+    snap.forEach((doc: QueryDocumentSnapshot) => {
         const d = doc.data() as MessageDoc;
         const tx = d.translations?.["en"] ? `\nTranslated(en): ${d.translations!["en"]}` : "";
         parts.push(`[${d.senderId}] ${d.text}${tx}`);
@@ -43,22 +40,22 @@ async function fetchRecentMessages(conversationId: string, lastN: number): Promi
     return { text: parts.reverse().join("\n"), lastKey };
 }
 
-async function verifyAuth(req: functions.Request): Promise<string> {
+async function verifyAuth(req: Request): Promise<string> {
     const authz = req.headers["authorization"] || req.headers["Authorization"];
     if (!authz || Array.isArray(authz)) throw new Error("Missing Authorization");
     const token = authz.replace(/^Bearer\s+/i, "").trim();
-    const decoded = await admin.auth().verifyIdToken(token);
+    const decoded = await getAuth().verifyIdToken(token);
     return decoded.uid;
 }
 
 async function checkRateLimit(uid: string, key: string, limit: number): Promise<void> {
     const minute = Math.floor(Date.now() / 60000).toString();
-    const ref = db.collection("ai_rate").doc(uid).collection("windows").doc(`${key}:${minute}`);
-    await db.runTransaction(async (tx) => {
-        const snap = await tx.get(ref);
+    const ref: DocumentReference<DocumentData> = db.collection("ai_rate").doc(uid).collection("windows").doc(`${key}:${minute}`);
+    await db.runTransaction(async (tx: Transaction) => {
+        const snap = await tx.get(ref) as DocumentSnapshot<DocumentData>;
         const count = (snap.exists ? (snap.data()?.count || 0) : 0) + 1;
         if (count > limit) throw new Error("RATE_LIMIT");
-        tx.set(ref, { count, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+        tx.set(ref, { count, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
     });
 }
 
@@ -74,10 +71,10 @@ async function readCache(cacheKey: string, maxAgeMs: number): Promise<any | null
 
 async function writeCache(cacheKey: string, payload: any): Promise<void> {
     const ref = db.collection("ai_cache").doc(cacheKey);
-    await ref.set({ payload, createdAt: admin.firestore.FieldValue.serverTimestamp() });
+    await ref.set({ payload, createdAt: FieldValue.serverTimestamp() });
 }
 
-export const askAI = functions.https.onRequest(async (req, res) => {
+export const askAI = functions.https.onRequest(async (req: Request, res: Response) => {
     try {
         const uid = await verifyAuth(req);
         const { conversationId, question, lastN = 20 } = req.body || {};
@@ -118,7 +115,7 @@ export const askAI = functions.https.onRequest(async (req, res) => {
     }
 });
 
-export const generateSmartReplies = functions.https.onRequest(async (req, res) => {
+export const generateSmartReplies = functions.https.onRequest(async (req: Request, res: Response) => {
     try {
         const uid = await verifyAuth(req);
         const { conversationId, tone = "neutral", lastN = 10 } = req.body || {};
