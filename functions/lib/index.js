@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.generateSmartReplies = exports.askAI = exports.openai = exports.OPENAI_MODEL = exports.OPENAI_API_KEY = void 0;
+exports.openai = exports.OPENAI_MODEL = exports.OPENAI_API_KEY = void 0;
 const crypto = require("crypto");
 const { getApps, initializeApp } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
@@ -71,7 +71,7 @@ async function writeCache(cacheKey, payload) {
     const ref = db.collection("ai_cache").doc(cacheKey);
     await ref.set({ payload, createdAt: FieldValue.serverTimestamp() });
 }
-exports.askAI = functions.https.onRequest(async (req, res) => {
+const askAI = functions.https.onRequest(async (req, res) => {
     try {
         const uid = await verifyAuth(req);
         const { conversationId, question, lastN = 20 } = req.body || {};
@@ -115,7 +115,7 @@ exports.askAI = functions.https.onRequest(async (req, res) => {
         res.status(500).json({ error: e?.message || "askAI failed" });
     }
 });
-exports.generateSmartReplies = functions.https.onRequest(async (req, res) => {
+const generateSmartReplies = functions.https.onRequest(async (req, res) => {
     try {
         const uid = await verifyAuth(req);
         const { conversationId, tone = "neutral", lastN = 10 } = req.body || {};
@@ -166,3 +166,4 @@ exports.generateSmartReplies = functions.https.onRequest(async (req, res) => {
         res.status(500).json({ error: e?.message || "generateSmartReplies failed" });
     }
 });
+module.exports = { askAI, generateSmartReplies };

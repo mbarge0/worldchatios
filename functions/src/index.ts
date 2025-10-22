@@ -74,7 +74,7 @@ async function writeCache(cacheKey: string, payload: any): Promise<void> {
     await ref.set({ payload, createdAt: FieldValue.serverTimestamp() });
 }
 
-export const askAI = functions.https.onRequest(async (req: Request, res: Response) => {
+const askAI = functions.https.onRequest(async (req: Request, res: Response) => {
     try {
         const uid = await verifyAuth(req);
         const { conversationId, question, lastN = 20 } = req.body || {};
@@ -115,7 +115,7 @@ export const askAI = functions.https.onRequest(async (req: Request, res: Respons
     }
 });
 
-export const generateSmartReplies = functions.https.onRequest(async (req: Request, res: Response) => {
+const generateSmartReplies = functions.https.onRequest(async (req: Request, res: Response) => {
     try {
         const uid = await verifyAuth(req);
         const { conversationId, tone = "neutral", lastN = 10 } = req.body || {};
@@ -154,5 +154,7 @@ export const generateSmartReplies = functions.https.onRequest(async (req: Reques
         res.status(500).json({ error: e?.message || "generateSmartReplies failed" });
     }
 });
+
+module.exports = { askAI, generateSmartReplies };
 
 
