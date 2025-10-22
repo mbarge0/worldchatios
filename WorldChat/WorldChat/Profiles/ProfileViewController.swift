@@ -1,0 +1,96 @@
+import UIKit
+import FirebaseAuth
+
+final class ProfileViewController: UIViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+	private let nameField = UITextField()
+	private let avatarView = UIImageView()
+	private let saveButton = UIButton(type: .system)
+	private let profileService = ProfileService()
+	private let imageProcessor = ImageProcessingService()
+	private var pendingAvatarData: Data?
+
+	override func viewDidLoad() {
+		super.viewDidLoad()
+		title = "Profile"
+		view.backgroundColor = .systemBackground
+
+		nameField.placeholder = "Display Name"
+		nameField.borderStyle = .roundedRect
+		avatarView.contentMode = .scaleAspectFill
+		avatarView.layer.cornerRadius = 40
+		avatarView.clipsToBounds = true
+		avatarView.backgroundColor = .secondarySystemBackground
+		avatarView.isUserInteractionEnabled = true
+		avatarView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(didTapAvatar)))
+		saveButton.setTitle("Save", for: .normal)
+		saveButton.addTarget(self, action: #selector(saveTapped), for: .touchUpInside)
+
+		[nameField, avatarView, saveButton].forEach { view.addSubview($0); $0.translatesAutoresizingMaskIntoConstraints = false }
+
+		NSLayoutConstraint.activate([
+			avatarView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 24),
+			avatarView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+			avatarView.widthAnchor.constraint(equalToConstant: 80),
+			avatarView.heightAnchor.constraint(equalToConstant: 80),
+			nameField.topAnchor.constraint(equalTo: avatarView.bottomAnchor, constant: 16),
+			nameField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+			nameField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
+			saveButton.topAnchor.constraint(equalTo: nameField.bottomAnchor, constant: 20),
+			saveButton.centerXAnchor.constraint(equalTo: view.centerXAnchor)
+		])
+
+		Task { await loadProfile() }
+	}
+
+	private func loadProfile() async {
+		guard let uid = Auth.auth().currentUser?.uid else { return }
+		do {
+			let fetched = try await profileService.fetchProfile(uid: uid)
+			guard let profile = fetched else { return }
+			DispatchQueue.main.async {
+				self.nameField.text = profile.displayName
+				if let urlStr = profile.avatarUrl, let url = URL(string: urlStr) {
+					URLSession.shared.dataTask(with: url) { data, _, _ in
+						if let d = data { DispatchQueue.main.async { self.avatarView.image = UIImage(data: d) } }
+					}.resume()
+				}
+			}
+		} catch {
+			print("🔴 [ProfileVC] loadProfile error: \(error)")
+		}
+	}
+
+	@objc private func didTapAvatar() {
+		let picker = UIImagePickerController()
+		picker.delegate = self
+		picker.sourceType = .photoLibrary
+		present(picker, animated: true)
+	}
+
+	func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+		picker.dismiss(animated: true)
+		if let image = info[.originalImage] as? UIImage, let raw = image.jpegData(compressionQuality: 0.9) {
+			// Display immediately
+			avatarView.image = image
+			// Process and hold for upload on Save
+			if let processed = try? imageProcessor.processAvatar(raw) {
+				pendingAvatarData = processed
+			}
+		}
+	}
+
+	@objc private func saveTapped() {
+		guard let uid = Auth.auth().currentUser?.uid else { return }
+		let name = nameField.text ?? ""
+		Task {
+			var avatarUrl: String? = nil
+			if let data = pendingAvatarData {
+				avatarUrl = try? await profileService.uploadAvatar(uid: uid, imageData: data)
+			}
+			// Write displayName and avatarUrl to Firestore
+			var update: [String: Any] = ["displayName": name]
+			if let avatarUrl { update["avatarUrl"] = avatarUrl }
+			try? await FirebaseService.firestore.collection("users").document(uid).setData(update, merge: true)
+		}
+	}
+}
