@@ -311,10 +311,10 @@ final class MessageCell: UICollectionViewCell {
 		}
 
 		let isOutgoing = message.senderId == FirebaseService.auth.currentUser?.uid
-		bubble.backgroundColor = isOutgoing ? Theme.outgoingBubble : Theme.incomingBubble
-		label.textColor = isOutgoing ? Theme.outgoingText : Theme.incomingText
-		translationLabel.textColor = isOutgoing ? Theme.outgoingMuted : Theme.incomingMuted
-		sublabel.textColor = isOutgoing ? Theme.outgoingMuted : Theme.incomingMuted
+		bubble.backgroundColor = isOutgoing ? Theme.brandPrimary : Theme.gold
+		label.textColor = isOutgoing ? Theme.outgoingText : Theme.textPrimary
+		translationLabel.textColor = isOutgoing ? Theme.outgoingMuted : Theme.textMuted
+		sublabel.textColor = isOutgoing ? Theme.outgoingMuted : Theme.textMuted
 		bubble.layer.maskedCorners = isOutgoing ? [.layerMinXMinYCorner, .layerMinXMaxYCorner, .layerMaxXMinYCorner] : [.layerMaxXMinYCorner, .layerMaxXMaxYCorner, .layerMinXMinYCorner]
 		leadingConstraint.isActive = !isOutgoing
 		trailingConstraint.isActive = isOutgoing

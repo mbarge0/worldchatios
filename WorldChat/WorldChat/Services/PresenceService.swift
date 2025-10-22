@@ -12,13 +12,13 @@ final class PresenceService {
 	}
 
 	func setOnline(for userId: String) {
-		// Firestore lastSeen/status
+		// Firestore presence doc: { online: true, lastSeen: ts }
 		firestore.collection("presence").document(userId).setData([
-			"status": "online",
+			"online": true,
 			"lastSeen": FieldValue.serverTimestamp()
 		], merge: true)
 
-		// RTDB live status
+		// RTDB live status (optional real-time heartbeat)
 		let ref = database.reference(withPath: "status/\(userId)")
 		ref.setValue(["state": "online", "updatedAt": ServerValue.timestamp()])
 		ref.onDisconnectSetValue(["state": "offline", "updatedAt": ServerValue.timestamp()])
@@ -26,7 +26,7 @@ final class PresenceService {
 
 	func setBackground(for userId: String) {
 		firestore.collection("presence").document(userId).setData([
-			"status": "offline",
+			"online": false,
 			"lastSeen": FieldValue.serverTimestamp()
 		], merge: true)
 

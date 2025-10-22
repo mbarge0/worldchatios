@@ -9,7 +9,7 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 	private var conversations: [Conversation] = []
 	private var listener: ListenerRegistration?
 	private var presenceListeners: [String: ListenerRegistration] = [:]
-	private var userIdToPresence: [String: String] = [:]
+	private var userIdToOnline: [String: Bool] = [:]
 
 	override func viewDidLoad() {
 		super.viewDidLoad()
@@ -62,20 +62,20 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 		// Remove old listeners
 		presenceListeners.values.forEach { $0.remove() }
 		presenceListeners.removeAll()
-		userIdToPresence.removeAll()
+		userIdToOnline.removeAll()
 		// Listen to presence for all participants except current user
 		let current = Auth.auth().currentUser?.uid ?? ""
 		let participantIds = Set(conversations.flatMap { $0.participants }.filter { $0 != current })
 		participantIds.forEach { uid in
 			let l = FirebaseService.firestore.collection("presence").document(uid).addSnapshotListener { [weak self] snap, _ in
 				guard let self = self else { return }
-				let status = (snap?.data()? ["status"] as? String) ?? "offline"
-				self.userIdToPresence[uid] = status
+				let online = (snap?.data()? ["online"] as? Bool) ?? false
+				self.userIdToOnline[uid] = online
 				self.tableView.visibleCells.forEach { cell in
 					if let indexPath = self.tableView.indexPath(for: cell) {
 						let convo = self.conversations[indexPath.row]
 						let other = convo.participants.first(where: { $0 != current }) ?? ""
-						if other == uid { self.applyPresence(on: cell, status: status) }
+						if other == uid { self.applyPresence(on: cell, online: online) }
 					}
 				}
 			}
@@ -83,10 +83,10 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 		}
 	}
 
-	private func applyPresence(on cell: UITableViewCell, status: String) {
+	private func applyPresence(on cell: UITableViewCell, online: Bool) {
 		let dot = UIView(frame: CGRect(x: 0, y: 0, width: 10, height: 10))
 		dot.layer.cornerRadius = 5
-		dot.backgroundColor = (status == "online") ? .systemGreen : .systemGray3
+		dot.backgroundColor = online ? .systemGreen : .systemGray3
 		cell.accessoryView = dot
 	}
 
@@ -140,8 +140,8 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 		cell.contentConfiguration = config
 		let current = Auth.auth().currentUser?.uid ?? ""
 		let other = c.participants.first(where: { $0 != current }) ?? ""
-		let status = userIdToPresence[other] ?? "offline"
-		applyPresence(on: cell, status: status)
+		let online = userIdToOnline[other] ?? false
+		applyPresence(on: cell, online: online)
 		return cell
 	}
 
