@@ -1,7 +1,7 @@
 **When to use**: When initializing a completely new phase of development that builds on a prior phase or project milestone.
 **When not to use**: When continuing an existing phase or revisiting prior work — use “Build” instead.
 
-Let’s begin the **Plan Phase** for this supermodule using the **Consolidated Planning Template**.  
+Let’s begin the **Plan Phase** for Supermodule C — AI Assistant & Smart Replies (Post‑MVP) in the /docs/foundation/dev_checklist.md dev checklist using the **Consolidated Planning Template**.  
 This phase combines the **Start**, **Plan**, and **Design** steps into one flow. Complete each step first before moving to the next step.
 
 Let’s begin the Start Step using the **Phase Start Template**.
@@ -26,8 +26,7 @@ Store the resulting report under `/docs/operations/phases/recent/phase-XX-01-pla
 - Planning Loop Template: `/prompts/system/02_planning_loop.md`  
 - Design Loop Template: `/prompts/system/03_design_loop.md`  
 
-**Previous phase documentation:** `/docs/operations/phases/phase-XX-06-handoff.md`  
+**Previous phase documentation:** `/docs/operations/phases/phase-03-03-reflect.md`  
 **PRD, architecture, and dev checklist:** `/docs/foundation/`  
 **Regression manifest:** `/docs/operations/regression/00_master_regression_manifest.md`
-
-We’re going to do **Phase XX**, which in the dev checklist corresponds to the next planned supermodule.
+**Coding rules**: `/docs/operations/coding_rules.md`

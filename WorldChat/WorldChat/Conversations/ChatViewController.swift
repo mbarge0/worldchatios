@@ -37,6 +37,11 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 	private let attachButton = UIButton(type: .system)
 	private let typingLabel = UILabel()
 	private let presenceDot = UIView()
+	private let aiButton = UIButton(type: .system)
+	private let smartRepliesScroll = UIScrollView()
+	private let smartRepliesStack = UIStackView()
+	private let aiService = AIService()
+	private let toneControl = UISegmentedControl(items: ["Casual", "Neutral", "Formal"])
 
 	init(conversationId: String, otherUserId: String, chatTitle: String?) {
 		self.conversationId = conversationId
@@ -94,6 +99,27 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 		inputContainer.addSubview(attachButton)
 		inputContainer.addSubview(inputTextView)
 		inputContainer.addSubview(sendButton)
+		view.addSubview(smartRepliesScroll)
+		smartRepliesScroll.translatesAutoresizingMaskIntoConstraints = false
+		smartRepliesScroll.showsHorizontalScrollIndicator = false
+		smartRepliesStack.axis = .horizontal
+		smartRepliesStack.spacing = 8
+		smartRepliesStack.alignment = .fill
+		smartRepliesStack.distribution = .fillProportionally
+		smartRepliesStack.translatesAutoresizingMaskIntoConstraints = false
+		smartRepliesScroll.addSubview(smartRepliesStack)
+		aiButton.translatesAutoresizingMaskIntoConstraints = false
+		aiButton.backgroundColor = Theme.gold
+		aiButton.tintColor = Theme.textPrimary
+		aiButton.setTitle("AI", for: .normal)
+		aiButton.layer.cornerRadius = 22
+		aiButton.addTarget(self, action: #selector(didTapAI), for: .touchUpInside)
+		aiButton.accessibilityLabel = "Open AI Assistant"
+		view.addSubview(aiButton)
+		toneControl.selectedSegmentIndex = 1
+		toneControl.translatesAutoresizingMaskIntoConstraints = false
+		toneControl.addTarget(self, action: #selector(toneChanged), for: .valueChanged)
+		view.addSubview(toneControl)
 		view.addSubview(typingLabel)
 		let presenceItem = UIBarButtonItem(customView: presenceDot)
 		navigationItem.rightBarButtonItem = presenceItem
@@ -103,7 +129,16 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 			collectionView.topAnchor.constraint(equalTo: guide.topAnchor),
 			collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
 			collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-			collectionView.bottomAnchor.constraint(equalTo: inputContainer.topAnchor),
+			collectionView.bottomAnchor.constraint(equalTo: smartRepliesScroll.topAnchor),
+
+			smartRepliesScroll.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+			smartRepliesScroll.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+			smartRepliesScroll.bottomAnchor.constraint(equalTo: inputContainer.topAnchor),
+			smartRepliesScroll.heightAnchor.constraint(equalToConstant: 44),
+			smartRepliesStack.leadingAnchor.constraint(equalTo: smartRepliesScroll.leadingAnchor, constant: 12),
+			smartRepliesStack.trailingAnchor.constraint(lessThanOrEqualTo: smartRepliesScroll.trailingAnchor, constant: -12),
+			smartRepliesStack.topAnchor.constraint(equalTo: smartRepliesScroll.topAnchor),
+			smartRepliesStack.bottomAnchor.constraint(equalTo: smartRepliesScroll.bottomAnchor),
 
 			inputContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor),
 			inputContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor),
@@ -128,8 +163,56 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 			typingLabel.bottomAnchor.constraint(equalTo: inputContainer.topAnchor, constant: -4),
 
 			presenceDot.widthAnchor.constraint(equalToConstant: 8),
-			presenceDot.heightAnchor.constraint(equalToConstant: 8)
+			presenceDot.heightAnchor.constraint(equalToConstant: 8),
+
+			aiButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+			aiButton.bottomAnchor.constraint(equalTo: smartRepliesScroll.topAnchor, constant: -8),
+			aiButton.widthAnchor.constraint(equalToConstant: 44),
+			aiButton.heightAnchor.constraint(equalToConstant: 44),
+
+			toneControl.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 12),
+			toneControl.centerYAnchor.constraint(equalTo: aiButton.centerYAnchor)
 		])
+	}
+
+	private func loadSmartReplies() {
+		let tone: AITone = {
+			switch self.toneControl.selectedSegmentIndex {
+			case 0: return .casual
+			case 2: return .formal
+			default: return .neutral
+			}
+		}()
+		aiService.generateSmartReplies(conversationId: conversationId, tone: tone) { [weak self] result in
+			DispatchQueue.main.async {
+				self?.smartRepliesStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+				switch result {
+				case .success(let suggestions):
+					for s in suggestions {
+						let pill = UIButton(type: .system)
+						pill.setTitle("\(s.translated)", for: .normal)
+						pill.titleLabel?.font = .systemFont(ofSize: 15, weight: .semibold)
+						pill.setTitleColor(Theme.textPrimary, for: .normal)
+						pill.backgroundColor = Theme.brandSecondary.withAlphaComponent(0.4)
+						pill.contentEdgeInsets = UIEdgeInsets(top: 10, left: 12, bottom: 10, right: 12)
+						pill.layer.cornerRadius = 16
+						pill.isAccessibilityElement = true
+						pill.accessibilityLabel = "Smart reply suggestion: \(s.translated)"
+						pill.addAction(UIAction(handler: { [weak self] _ in
+							self?.inputTextView.text = s.original
+							self?.textViewDidChange(self!.inputTextView)
+						}), for: .touchUpInside)
+						self?.smartRepliesStack.addArrangedSubview(pill)
+					}
+				case .failure:
+					let label = UILabel()
+					label.text = "Suggestions unavailable"
+					label.font = .systemFont(ofSize: 13)
+					label.textColor = .secondaryLabel
+					self?.smartRepliesStack.addArrangedSubview(label)
+				}
+			}
+		}
 	}
 
 	private func attachMessageAndTypingListeners() {
@@ -148,6 +231,66 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 		}
 		typingHandle = messaging.listenTyping(conversationId: conversationId, otherUserId: otherUserId) { [weak self] isTyping in
 			self?.typingLabel.text = isTyping ? "Typing…" : ""
+		}
+	}
+
+	@objc private func didTapAI() {
+		let alert = UIAlertController(title: "AI Assistant", message: "Ask a question about this conversation.", preferredStyle: .alert)
+		alert.addTextField { tf in tf.placeholder = "What does 'stai' mean?" }
+		alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+		alert.addAction(UIAlertAction(title: "Ask", style: .default, handler: { [weak self] _ in
+			guard let self = self else { return }
+			let q = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+			guard !q.isEmpty else { return }
+			self.aiService.askAI(conversationId: self.conversationId, question: q, lastN: 20) { result in
+				DispatchQueue.main.async {
+					switch result {
+					case .success(let answer):
+						let a = UIAlertController(title: "Answer", message: answer, preferredStyle: .alert)
+						a.addAction(UIAlertAction(title: "OK", style: .default))
+						self.present(a, animated: true)
+					case .failure:
+						let a = UIAlertController(title: "AI Unavailable", message: "Please try again shortly.", preferredStyle: .alert)
+						a.addAction(UIAlertAction(title: "OK", style: .default))
+						self.present(a, animated: true)
+					}
+				}
+			}
+		}))
+		present(alert, animated: true)
+	}
+
+	@objc private func toneChanged() {
+		loadSmartReplies()
+	}
+
+	override func viewDidAppear(_ animated: Bool) {
+		super.viewDidAppear(animated)
+		loadSmartReplies()
+	}
+
+	// Context menu: long-press message -> Ask AI (explain)
+	func collectionView(_ collectionView: UICollectionView, contextMenuConfigurationForItemAt indexPath: IndexPath, point: CGPoint) -> UIContextMenuConfiguration? {
+		guard indexPath.item < messages.count else { return nil }
+		let message = messages[indexPath.item]
+		return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { _ in
+			let explain = UIAction(title: "Ask AI (explain)", image: UIImage(systemName: "sparkles")) { [weak self] _ in
+				guard let self = self else { return }
+				let q = "Explain: \(message.text)"
+				self.aiService.askAI(conversationId: self.conversationId, question: q, lastN: 20) { result in
+					DispatchQueue.main.async {
+						let msg: String
+						switch result {
+						case .success(let answer): msg = answer
+						case .failure: msg = "AI temporarily unavailable"
+						}
+						let a = UIAlertController(title: "Explanation", message: msg, preferredStyle: .alert)
+						a.addAction(UIAlertAction(title: "OK", style: .default))
+						self.present(a, animated: true)
+					}
+				}
+			}
+			return UIMenu(title: "", children: [explain])
 		}
 	}
 
@@ -204,6 +347,11 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 		let text = textView.text.trimmingCharacters(in: .whitespacesAndNewlines)
 		sendButton.isEnabled = !text.isEmpty
 		messaging.setTyping(conversationId: conversationId, isTyping: !text.isEmpty)
+	}
+
+	func textViewDidBeginEditing(_ textView: UITextView) {
+		// Prefetch smart replies when the composer gains focus
+		loadSmartReplies()
 	}
 
 	// MARK: - Data Source

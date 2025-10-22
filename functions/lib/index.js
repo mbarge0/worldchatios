@@ -73,7 +73,9 @@ async function writeCache(cacheKey, payload) {
 }
 const askAI = functions.https.onRequest(async (req, res) => {
     try {
-        const uid = await verifyAuth(req);
+        const uid = process.env.FUNCTIONS_EMULATOR === "true"
+            ? "local-test-user"
+            : await verifyAuth(req);
         const { conversationId, question, lastN = 20 } = req.body || {};
         if (!exports.OPENAI_API_KEY)
             throw new Error("Missing OPENAI_API_KEY");

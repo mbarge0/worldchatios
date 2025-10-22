@@ -76,7 +76,10 @@ async function writeCache(cacheKey: string, payload: any): Promise<void> {
 
 const askAI = functions.https.onRequest(async (req: Request, res: Response) => {
     try {
-        const uid = await verifyAuth(req);
+        const uid =
+            process.env.FUNCTIONS_EMULATOR === "true"
+                ? "local-test-user"
+                : await verifyAuth(req);
         const { conversationId, question, lastN = 20 } = req.body || {};
         if (!OPENAI_API_KEY) throw new Error("Missing OPENAI_API_KEY");
         if (!conversationId || !question) {

@@ -532,68 +532,6 @@ messages/{messageId}
 - Offline sends: Store in local queue with "pending" status
 - On network reconnect: Upload pending messages → update to "sent"
 
-6.11 AI Cultural Context Lookup (Enhanced RAG)
-
-Description:
-The AI Conversation Assistant now integrates an enhanced Retrieval-Augmented Generation (RAG) process that includes cultural and linguistic insights in addition to recent chat history. This feature allows users to gain a deeper understanding of idioms, tone, and cultural subtext embedded in foreign-language messages.
-
-User Intent:
-Users want to understand not just what a message means, but why it’s expressed that way — including its social tone, regional connotation, and cultural relevance. This supports both clearer communication and language learning.
-
-Dependencies:
-	•	Firebase Firestore (cultural_insights collection)
-	•	Cloud Function askAI() (extended retrieval logic)
-	•	OpenAI GPT-4 API (for combined linguistic + cultural reasoning)
-	•	Optional: Vector embedding model (for future semantic retrieval)
-
-Success Criteria:
-	•	AI explanations integrate 1–2 relevant cultural or linguistic facts per query
-	•	AI response latency remains <3 seconds (p95)
-	•	90% of test users find explanations helpful or educational
-	•	80% of responses accurately match the message’s originating culture/language
-
-  Technical Implementation:
-  // Updated askAI() Cloud Function
-const recentMessages = await getRecentMessages(conversationId);
-const culturalInsights = await getCulturalInsights(userLanguage);
-
-const context = {
-  recentMessages,
-  culturalInsights: culturalInsights.slice(0, 3),
-};
-
-const prompt = `
-You are a multilingual travel and culture companion.
-Explain this message to help the user understand its meaning, tone,
-and cultural background. Keep it concise and educational.
-`;
-
-const completion = await openai.chat.completions.create({
-  model: "gpt-4",
-  messages: [
-    { role: "system", content: prompt },
-    { role: "user", content: JSON.stringify(context) },
-  ],
-});
-
-Firestore Schema Example:
-cultural_insights/{id}
-├── language: "it"
-├── term: "Hai provato"
-├── explanation: "Common friendly way to ask 'Have you tried...?' — shows curiosity typical of Italian conversation."
-├── context: "Used socially; reflects hospitality culture"
-└── tags: ["phrasing", "tone", "culture"]
-
-UI Interaction:
-	•	Long-press message → “Explain Message”
-	•	Calls askAI(mode: "explain")
-	•	Returns short educational response (1–3 lines)
-	•	Displayed as tooltip, inline note, or in AI chat view
-
-Example Output:
-
-“In Italian, ‘Hai provato…’ is a warm, casual way to ask if someone has experienced something. It reflects curiosity and friendliness, often used among friends.”
-
 ---
 
 ## 7. User Stories
@@ -1529,6 +1467,13 @@ dependencies: [
 3. Daily progress check against milestones (Appendix E)
 4. Update PRD if critical blockers emerge
 
+Version 1.1 (Oct 21, 2025):
+Added “Cultural Insight RAG” functionality expanding AI Assistant scope to include linguistic and cultural context explanations.
+Implementation: Firestore-based cultural_insights collection and updated askAI() Cloud Function prompt.
+No architectural or stack changes.
+Updated Developer Checklist accordingly.
+
 ---
 
 **END OF DOCUMENT**
+
