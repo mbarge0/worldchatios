@@ -1,6 +1,7 @@
 import UIKit
 import FirebaseCore
 import UserNotifications
+import FirebaseAuth
 
 @main
 final class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate {
@@ -42,6 +43,18 @@ final class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationC
 		}
 		application.registerForRemoteNotifications()
 		return true
+	}
+
+	func applicationDidBecomeActive(_ application: UIApplication) {
+		if let uid = Auth.auth().currentUser?.uid {
+			PresenceService().setOnline(for: uid)
+		}
+	}
+
+	func applicationWillResignActive(_ application: UIApplication) {
+		if let uid = Auth.auth().currentUser?.uid {
+			PresenceService().setBackground(for: uid)
+		}
 	}
 
 	func application(_ application: UIApplication,

@@ -9,17 +9,15 @@ service cloud.firestore {
       allow write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Presence: user can read all basic presence; write own presence only
+    // Presence: any authed read; only owner write
     match /presence/{userId} {
-      allow read: if request.auth != null; // presence is lightweight status
+      allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Conversations: readable/writable by participants only
+    // Conversations & messages: participants only
     match /conversations/{conversationId} {
       allow read, write: if isParticipant(conversationId);
-
-      // Messages subcollection
       match /messages/{messageId} {
         allow read, write: if isParticipant(conversationId);
       }

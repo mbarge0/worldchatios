@@ -8,6 +8,8 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 	private let messaging = MessagingService()
 	private var conversations: [Conversation] = []
 	private var listener: ListenerRegistration?
+	private var presenceListeners: [String: ListenerRegistration] = [:]
+	private var userIdToPresence: [String: String] = [:]
 
 	override func viewDidLoad() {
 		super.viewDidLoad()
@@ -48,13 +50,50 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 	private func attachListener() {
 		guard let uid = Auth.auth().currentUser?.uid else { return }
 		listener = messaging.listenConversations(for: uid) { [weak self] items in
-			self?.conversations = items
-			self?.tableView.reloadData()
-			self?.emptyLabel.isHidden = !items.isEmpty
+			guard let self = self else { return }
+			self.conversations = items
+			self.tableView.reloadData()
+			self.emptyLabel.isHidden = !items.isEmpty
+			self.attachPresenceListeners()
 		}
 	}
 
-	deinit { listener?.remove() }
+	private func attachPresenceListeners() {
+		// Remove old listeners
+		presenceListeners.values.forEach { $0.remove() }
+		presenceListeners.removeAll()
+		userIdToPresence.removeAll()
+		// Listen to presence for all participants except current user
+		let current = Auth.auth().currentUser?.uid ?? ""
+		let participantIds = Set(conversations.flatMap { $0.participants }.filter { $0 != current })
+		participantIds.forEach { uid in
+			let l = FirebaseService.firestore.collection("presence").document(uid).addSnapshotListener { [weak self] snap, _ in
+				guard let self = self else { return }
+				let status = (snap?.data()? ["status"] as? String) ?? "offline"
+				self.userIdToPresence[uid] = status
+				self.tableView.visibleCells.forEach { cell in
+					if let indexPath = self.tableView.indexPath(for: cell) {
+						let convo = self.conversations[indexPath.row]
+						let other = convo.participants.first(where: { $0 != current }) ?? ""
+						if other == uid { self.applyPresence(on: cell, status: status) }
+					}
+				}
+			}
+			presenceListeners[uid] = l
+		}
+	}
+
+	private func applyPresence(on cell: UITableViewCell, status: String) {
+		let dot = UIView(frame: CGRect(x: 0, y: 0, width: 10, height: 10))
+		dot.layer.cornerRadius = 5
+		dot.backgroundColor = (status == "online") ? .systemGreen : .systemGray3
+		cell.accessoryView = dot
+	}
+
+	deinit {
+		listener?.remove()
+		presenceListeners.values.forEach { $0.remove() }
+	}
 
 	@objc private func didTapSignOut() {
 		do {
@@ -99,9 +138,10 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 		if let text = c.lastMessage { config.secondaryText = text }
 		config.secondaryTextProperties.color = Theme.textMuted
 		cell.contentConfiguration = config
-		let chevron = UIImage(systemName: "chevron.right")?.withTintColor(Theme.brandSecondary, renderingMode: .alwaysOriginal)
-		cell.accessoryView = UIImageView(image: chevron)
-		cell.selectionStyle = .default
+		let current = Auth.auth().currentUser?.uid ?? ""
+		let other = c.participants.first(where: { $0 != current }) ?? ""
+		let status = userIdToPresence[other] ?? "offline"
+		applyPresence(on: cell, status: status)
 		return cell
 	}
 
