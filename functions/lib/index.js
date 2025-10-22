@@ -2,24 +2,16 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.openai = exports.OPENAI_MODEL = exports.OPENAI_API_KEY = void 0;
 const crypto = require("crypto");
+const dotenv = require("dotenv");
 const { getApps, initializeApp } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
 const { FieldValue, getFirestore } = require("firebase-admin/firestore");
 const functions = require("firebase-functions");
 const OpenAI = require("openai").default;
-// OpenAI configuration (immediately after imports)
-const runtimeConfig = (() => {
-    try {
-        return functions.config?.() ?? {};
-    }
-    catch {
-        return {};
-    }
-})();
-const cfgOpenAI = runtimeConfig.openai || {};
-exports.OPENAI_API_KEY = process.env.OPENAI_API_KEY || cfgOpenAI.key || "";
-exports.OPENAI_MODEL = process.env.OPENAI_MODEL || cfgOpenAI.model || "gpt-4o-mini";
-exports.openai = new OpenAI({ apiKey: exports.OPENAI_API_KEY });
+dotenv.config();
+exports.OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
+exports.OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
+exports.openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 if (!getApps().length)
     initializeApp();
 const db = getFirestore();
@@ -71,6 +63,78 @@ async function writeCache(cacheKey, payload) {
     const ref = db.collection("ai_cache").doc(cacheKey);
     await ref.set({ payload, createdAt: FieldValue.serverTimestamp() });
 }
+function extractSmartRepliesFromText(raw) {
+    const suggestions = [];
+    if (!raw || typeof raw !== "string")
+        return suggestions;
+    let text = raw.trim();
+    // Remove code fences to reduce noise
+    text = text.replace(/```[\s\S]*?```/g, "");
+    // Attempt to salvage JSON by normalizing single quotes
+    try {
+        const normalized = text.replace(/\n/g, " ").replace(/'/g, '"');
+        const maybe = JSON.parse(normalized);
+        if (Array.isArray(maybe)) {
+            for (const item of maybe) {
+                if (item && typeof item === "object" && typeof item.original === "string") {
+                    const translated = typeof item.translated === "string" ? item.translated : item.original;
+                    suggestions.push({ original: item.original, translated });
+                    if (suggestions.length >= 3)
+                        return suggestions;
+                }
+            }
+        }
+    }
+    catch { }
+    // Parse line-by-line patterns
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    let pendingOriginal = null;
+    for (const line of lines) {
+        // Pattern: Original: xxx
+        const o = line.match(/^Original\s*:\s*(.+)$/i);
+        if (o) {
+            pendingOriginal = o[1].trim();
+            continue;
+        }
+        // Pattern: Translated: yyy (paired with previous Original)
+        const t = line.match(/^Translated\s*:\s*(.+)$/i);
+        if (t && pendingOriginal) {
+            suggestions.push({ original: pendingOriginal, translated: t[1].trim() });
+            pendingOriginal = null;
+            if (suggestions.length >= 3)
+                return suggestions;
+            continue;
+        }
+        // Pattern: "original -> translated"
+        const arrow = line.match(/^[-*]?\s*(.+?)\s*->\s*(.+)$/);
+        if (arrow) {
+            suggestions.push({ original: arrow[1].trim(), translated: arrow[2].trim() });
+            if (suggestions.length >= 3)
+                return suggestions;
+            continue;
+        }
+        // Pattern: "original - translated"
+        const dash = line.match(/^[-*]?\s*(.+?)\s+-\s+(.+)$/);
+        if (dash) {
+            suggestions.push({ original: dash[1].trim(), translated: dash[2].trim() });
+            if (suggestions.length >= 3)
+                return suggestions;
+            continue;
+        }
+    }
+    // Fallback: take the first three bullet/numbered lines as both original and translated
+    if (suggestions.length < 3) {
+        const candidates = lines
+            .map(s => s.replace(/^\d+\.|^[-*)\s]+/, "").trim())
+            .filter(s => s && !/^Original\s*:/i.test(s) && !/^Translated\s*:/i.test(s));
+        for (const s of candidates) {
+            suggestions.push({ original: s, translated: s });
+            if (suggestions.length >= 3)
+                break;
+        }
+    }
+    return suggestions.slice(0, 3);
+}
 const askAI = functions.https.onRequest(async (req, res) => {
     try {
         const uid = process.env.FUNCTIONS_EMULATOR === "true"
@@ -104,6 +168,7 @@ const askAI = functions.https.onRequest(async (req, res) => {
             max_tokens: 300,
         });
         const latencyMs = Date.now() - start;
+        console.log("OpenAI response received", { fn: "askAI", latencyMs });
         const answer = completion.choices?.[0]?.message?.content || "";
         const payload = { answer, latencyMs };
         await writeCache(key, payload);
@@ -148,13 +213,14 @@ const generateSmartReplies = functions.https.onRequest(async (req, res) => {
             max_tokens: 200,
         });
         const latencyMs = Date.now() - start;
+        console.log("OpenAI response received", { fn: "generateSmartReplies", latencyMs });
         const raw = completion.choices?.[0]?.message?.content || "[]";
         let suggestions;
         try {
             suggestions = JSON.parse(raw);
         }
         catch {
-            suggestions = [];
+            suggestions = extractSmartRepliesFromText(raw);
         }
         const payload = { suggestions, latencyMs };
         await writeCache(key, payload);
