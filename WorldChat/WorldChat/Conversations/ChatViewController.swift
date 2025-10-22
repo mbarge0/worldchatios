@@ -53,8 +53,13 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 		title = chatTitle ?? "Chat"
 
 		setupViews()
-		attachListeners()
+		attachMessageAndTypingListeners()
 		sendQueue.start()
+	}
+
+	override func viewWillAppear(_ animated: Bool) {
+		super.viewWillAppear(animated)
+		attachPresenceListener()
 	}
 
 	private func setupViews() {
@@ -127,7 +132,8 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 		])
 	}
 
-	private func attachListeners() {
+	private func attachMessageAndTypingListeners() {
+		listener?.remove()
 		listener = messaging.listenMessages(conversationId: conversationId) { [weak self] msgs in
 			guard let self = self else { return }
 			self.messages = msgs
@@ -137,9 +143,16 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 				self.collectionView.scrollToItem(at: last, at: .bottom, animated: true)
 			}
 		}
+		if let typingHandle = typingHandle {
+			FirebaseService.realtimeDB.reference().removeObserver(withHandle: typingHandle)
+		}
 		typingHandle = messaging.listenTyping(conversationId: conversationId, otherUserId: otherUserId) { [weak self] isTyping in
 			self?.typingLabel.text = isTyping ? "Typing…" : ""
 		}
+	}
+
+	private func attachPresenceListener() {
+		presenceListener?.remove()
 		presenceListener = messaging.listenPresence(userId: otherUserId) { [weak self] status in
 			self?.presenceDot.backgroundColor = (status == "online") ? .systemGreen : .systemGray
 		}
@@ -202,7 +215,6 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 		if indexPath.item < messages.count {
 			cell.configure(with: messages[indexPath.item])
 		} else {
-			// Defensive: configure with an empty message shape
 			let fallback = Message(id: UUID().uuidString, senderId: FirebaseService.auth.currentUser?.uid ?? "", text: "", timestamp: Date(), status: "sent", translations: nil, readBy: [])
 			cell.configure(with: fallback)
 		}
@@ -301,7 +313,6 @@ final class MessageCell: UICollectionViewCell {
 			translationLabel.text = "⟲ translation pending"
 			translationLabel.isHidden = false
 		}
-		// Receipts
 		switch message.status {
 		case "sending": sublabel.text = "…"; sublabel.textColor = Theme.incomingMuted
 		case "sent": sublabel.text = "✓"; sublabel.textColor = Theme.incomingMuted
