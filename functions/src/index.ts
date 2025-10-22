@@ -98,12 +98,13 @@ function extractSmartRepliesFromText(raw: string): Array<{ original: string; tra
     const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     let pendingOriginal: string | null = null;
     for (const line of lines) {
+        const content = line.replace(/^(?:\d+[.)]|[-*•])\s+/, "").trim();
         // Pattern: Original: xxx
-        const o = line.match(/^Original\s*:\s*(.+)$/i);
+        const o = content.match(/^Original\s*:\s*(.+)$/i);
         if (o) { pendingOriginal = o[1].trim(); continue; }
 
         // Pattern: Translated: yyy (paired with previous Original)
-        const t = line.match(/^Translated\s*:\s*(.+)$/i);
+        const t = content.match(/^Translated\s*:\s*(.+)$/i);
         if (t && pendingOriginal) {
             suggestions.push({ original: pendingOriginal, translated: t[1].trim() });
             pendingOriginal = null;
@@ -112,17 +113,33 @@ function extractSmartRepliesFromText(raw: string): Array<{ original: string; tra
         }
 
         // Pattern: "original -> translated"
-        const arrow = line.match(/^[-*]?\s*(.+?)\s*->\s*(.+)$/);
+        const arrow = content.match(/^(.+?)\s*->\s*(.+)$/);
         if (arrow) {
             suggestions.push({ original: arrow[1].trim(), translated: arrow[2].trim() });
             if (suggestions.length >= 3) return suggestions;
             continue;
         }
 
-        // Pattern: "original - translated"
-        const dash = line.match(/^[-*]?\s*(.+?)\s+-\s+(.+)$/);
+        // Pattern: "original - translated" (hyphen)
+        const dash = content.match(/^(.+?)\s+-\s+(.+)$/);
         if (dash) {
             suggestions.push({ original: dash[1].trim(), translated: dash[2].trim() });
+            if (suggestions.length >= 3) return suggestions;
+            continue;
+        }
+
+        // Pattern: en/em dash
+        const uniDash = content.match(/^(.+?)\s+[–—]\s+(.+)$/);
+        if (uniDash) {
+            suggestions.push({ original: uniDash[1].trim(), translated: uniDash[2].trim() });
+            if (suggestions.length >= 3) return suggestions;
+            continue;
+        }
+
+        // Pattern: colon separator (including full-width colon)
+        const colon = content.match(/^(.+?)\s*[:：]\s+(.+)$/);
+        if (colon) {
+            suggestions.push({ original: colon[1].trim(), translated: colon[2].trim() });
             if (suggestions.length >= 3) return suggestions;
             continue;
         }
@@ -131,7 +148,7 @@ function extractSmartRepliesFromText(raw: string): Array<{ original: string; tra
     // Fallback: take the first three bullet/numbered lines as both original and translated
     if (suggestions.length < 3) {
         const candidates = lines
-            .map(s => s.replace(/^\d+\.|^[-*)\s]+/, "").trim())
+            .map(s => s.replace(/^(?:\d+[.)]|[-*•)\s]+)/, "").trim())
             .filter(s => s && !/^Original\s*:/i.test(s) && !/^Translated\s*:/i.test(s));
         for (const s of candidates) {
             suggestions.push({ original: s, translated: s });
@@ -189,7 +206,10 @@ const askAI = functions.https.onRequest(async (req: Request, res: Response) => {
 
 const generateSmartReplies = functions.https.onRequest(async (req: Request, res: Response) => {
     try {
-        const uid = await verifyAuth(req);
+        const uid =
+            process.env.FUNCTIONS_EMULATOR === "true"
+                ? "local-test-user"
+                : await verifyAuth(req);
         const { conversationId, tone = "neutral", lastN = 10 } = req.body || {};
         if (!OPENAI_API_KEY) throw new Error("Missing OPENAI_API_KEY");
         if (!conversationId) {
@@ -218,7 +238,21 @@ const generateSmartReplies = functions.https.onRequest(async (req: Request, res:
         console.log("OpenAI response received", { fn: "generateSmartReplies", latencyMs });
         const raw = completion.choices?.[0]?.message?.content || "[]";
         let suggestions: Array<{ original: string; translated: string }>;
-        try { suggestions = JSON.parse(raw) } catch { suggestions = extractSmartRepliesFromText(raw) }
+        try {
+            // Strip code fences like ```json or ```
+            const cleaned = raw
+                .replace(/```json/i, "")
+                .replace(/```/g, "")
+                .trim();
+
+            suggestions = JSON.parse(cleaned);
+            console.log("✅ generateSmartReplies JSON parse success", { count: suggestions.length, suggestions });
+        } catch (err) {
+            console.warn("⚠️ generateSmartReplies JSON parse failed", { error: err, raw });
+            const extracted = extractSmartRepliesFromText(raw);
+            suggestions = extracted;
+            console.log("🧩 Fallback extraction used", { count: suggestions.length, extracted });
+        }
         const payload = { suggestions, latencyMs };
         await writeCache(key, payload);
         res.json({ ...payload, cached: false });
