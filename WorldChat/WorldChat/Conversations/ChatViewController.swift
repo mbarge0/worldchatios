@@ -6,6 +6,7 @@ import FirebaseDatabase
 final class ChatViewController: UIViewController, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, UITextViewDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
 	private let conversationId: String
 	private let otherUserId: String
+	private let chatTitle: String?
 	private let messaging = MessagingService()
 	private let sendQueue = SendQueueService()
 
@@ -37,9 +38,10 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 	private let typingLabel = UILabel()
 	private let presenceDot = UIView()
 
-	init(conversationId: String, otherUserId: String) {
+	init(conversationId: String, otherUserId: String, chatTitle: String?) {
 		self.conversationId = conversationId
 		self.otherUserId = otherUserId
+		self.chatTitle = chatTitle
 		super.init(nibName: nil, bundle: nil)
 	}
 
@@ -48,7 +50,7 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 	override func viewDidLoad() {
 		super.viewDidLoad()
 		view.backgroundColor = .systemBackground
-		title = "Chat"
+		title = chatTitle ?? "Chat"
 
 		setupViews()
 		attachListeners()
@@ -187,21 +189,31 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 		messaging.setTyping(conversationId: conversationId, isTyping: !text.isEmpty)
 	}
 
-	// MARK: - Collection
+	// MARK: - Data Source
+
+	func numberOfSections(in collectionView: UICollectionView) -> Int { 1 }
 
 	func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-		messages.count
+		max(0, messages.count)
 	}
 
 	func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
 		let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! MessageCell
-		cell.configure(with: messages[indexPath.item])
+		if indexPath.item < messages.count {
+			cell.configure(with: messages[indexPath.item])
+		} else {
+			// Defensive: configure with an empty message shape
+			let fallback = Message(id: UUID().uuidString, senderId: FirebaseService.auth.currentUser?.uid ?? "", text: "", timestamp: Date(), status: "sent", translations: nil, readBy: [])
+			cell.configure(with: fallback)
+		}
 		return cell
 	}
 
+	// MARK: - Collection sizing (safe heights)
+
 	func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
 		let maxWidth = collectionView.bounds.width * 0.75
-		let message = messages[indexPath.item]
+		let message = (indexPath.item < messages.count) ? messages[indexPath.item] : Message(id: "_", senderId: "_", text: " ", timestamp: Date(), status: "sent", translations: nil, readBy: [])
 		let text = (message.text.isEmpty ? " " : message.text) as NSString
 		let attributes: [NSAttributedString.Key: Any] = [.font: UIFont.systemFont(ofSize: 17)]
 		let bounding = text.boundingRect(with: CGSize(width: maxWidth - 24 - 24, height: CGFloat.greatestFiniteMagnitude),
@@ -213,7 +225,7 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 																 options: [.usesLineFragmentOrigin, .usesFontLeading],
 																 attributes: [.font: UIFont.systemFont(ofSize: 14)],
 																 context: nil)
-		let baseHeights: CGFloat = 10 + 6 + 6 + 8 // top padding + gaps + bottom
+		let baseHeights: CGFloat = 10 + 6 + 6 + 8
 		let height = max(44, ceil(bounding.height) + ceil(translationBounding.height) + baseHeights)
 		return CGSize(width: collectionView.bounds.width, height: height.isFinite ? height : 44)
 	}

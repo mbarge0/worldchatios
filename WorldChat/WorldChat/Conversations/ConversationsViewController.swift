@@ -14,6 +14,8 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 		title = "Conversations"
 		view.backgroundColor = .systemBackground
 
+		navigationItem.backButtonTitle = "Back"
+
 		tableView.dataSource = self
 		tableView.delegate = self
 		tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
@@ -108,7 +110,7 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 		let convo = conversations[indexPath.row]
 		let current = Auth.auth().currentUser?.uid ?? ""
 		let other = convo.participants.first(where: { $0 != current }) ?? ""
-		navigationController?.pushViewController(ChatViewController(conversationId: convo.id, otherUserId: other), animated: true)
+		navigationController?.pushViewController(ChatViewController(conversationId: convo.id, otherUserId: other, chatTitle: convo.title), animated: true)
 	}
 }
 

@@ -9,9 +9,13 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         let window = UIWindow(windowScene: windowScene)
         self.window = window
         if Auth.auth().currentUser != nil {
-            window.rootViewController = UINavigationController(rootViewController: ConversationsViewController())
+            let root = ConversationsViewController()
+            root.navigationItem.backButtonTitle = "Back"
+            window.rootViewController = UINavigationController(rootViewController: root)
         } else {
-            window.rootViewController = UINavigationController(rootViewController: LoginViewController())
+            let root = LoginViewController()
+            root.navigationItem.backButtonTitle = "Back"
+            window.rootViewController = UINavigationController(rootViewController: root)
         }
         window.makeKeyAndVisible()
 
@@ -21,9 +25,8 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     @objc private func openConversation(_ note: Notification) {
         guard let conversationId = note.object as? String,
               let nav = window?.rootViewController as? UINavigationController else { return }
-        // For MVP, push chat with empty otherUserId (will still show messages)
         nav.popToRootViewController(animated: false)
-        nav.pushViewController(ChatViewController(conversationId: conversationId, otherUserId: ""), animated: true)
+        nav.pushViewController(ChatViewController(conversationId: conversationId, otherUserId: "", chatTitle: nil), animated: true)
     }
 }
 
