@@ -44,10 +44,21 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 		navigationItem.leftBarButtonItem = UIBarButtonItem(title: "Sign Out", style: .plain, target: self, action: #selector(didTapSignOut))
 		navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(didTapNew))
 
-		attachListener()
+		attachConversationsListener()
 	}
 
-	private func attachListener() {
+	override func viewWillAppear(_ animated: Bool) {
+		super.viewWillAppear(animated)
+		attachPresenceListeners()
+	}
+
+	override func viewWillDisappear(_ animated: Bool) {
+		super.viewWillDisappear(animated)
+		presenceListeners.values.forEach { $0.remove() }
+		presenceListeners.removeAll()
+	}
+
+	private func attachConversationsListener() {
 		guard let uid = Auth.auth().currentUser?.uid else { return }
 		listener = messaging.listenConversations(for: uid) { [weak self] items in
 			guard let self = self else { return }
@@ -59,11 +70,9 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 	}
 
 	private func attachPresenceListeners() {
-		// Remove old listeners
 		presenceListeners.values.forEach { $0.remove() }
 		presenceListeners.removeAll()
 		userIdToOnline.removeAll()
-		// Listen to presence for all participants except current user
 		let current = Auth.auth().currentUser?.uid ?? ""
 		let participantIds = Set(conversations.flatMap { $0.participants }.filter { $0 != current })
 		participantIds.forEach { uid in

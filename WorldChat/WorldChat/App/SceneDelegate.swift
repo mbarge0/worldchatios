@@ -22,6 +22,14 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         NotificationCenter.default.addObserver(self, selector: #selector(openConversation(_:)), name: NSNotification.Name("OpenConversation"), object: nil)
     }
 
+    func sceneDidBecomeActive(_ scene: UIScene) {
+        if let uid = Auth.auth().currentUser?.uid { PresenceService.shared.start(for: uid) }
+    }
+
+    func sceneWillResignActive(_ scene: UIScene) {
+        if let uid = Auth.auth().currentUser?.uid { PresenceService.shared.stop(for: uid) }
+    }
+
     @objc private func openConversation(_ note: Notification) {
         guard let conversationId = note.object as? String,
               let nav = window?.rootViewController as? UINavigationController else { return }
