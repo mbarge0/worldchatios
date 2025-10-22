@@ -1,0 +1,85 @@
+[debug] [2025-10-22T21:38:35.671Z] ----------------------------------------------------------------------
+[debug] [2025-10-22T21:38:35.672Z] Command:       /Users/matthewbarge/.nvm/versions/node/v20.19.5/bin/node /Users/matthewbarge/DevProjects/worldchatios/functions/node_modules/.bin/firebase emulators:start --only functions
+[debug] [2025-10-22T21:38:35.672Z] CLI Version:   14.20.0
+[debug] [2025-10-22T21:38:35.673Z] Platform:      darwin
+[debug] [2025-10-22T21:38:35.673Z] Node Version:  v20.19.5
+[debug] [2025-10-22T21:38:35.673Z] Time:          Wed Oct 22 2025 16:38:35 GMT-0500 (Central Daylight Time)
+[debug] [2025-10-22T21:38:35.673Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-10-22T21:38:35.786Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-10-22T21:38:35.787Z] > authorizing via signed-in user (mbarge0@gmail.com)
+[info] i  emulators: Starting emulators: functions {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: functions"}}
+[debug] [2025-10-22T21:38:35.928Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-10-22T21:38:35.928Z] assigned listening specs for emulators {"user":{"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"ui":[{"address":"127.0.0.1","family":"IPv4","port":4000},{"address":"::1","family":"IPv6","port":4000}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2025-10-22T21:38:35.930Z] Emulator locator file path: /var/folders/md/yfj92qp17pb8gvqc9qdk12x80000gn/T/hub-worldchat-5a537.json
+[debug] [2025-10-22T21:38:35.931Z] [hub] writing locator at /var/folders/md/yfj92qp17pb8gvqc9qdk12x80000gn/T/hub-worldchat-5a537.json
+[debug] [2025-10-22T21:38:36.067Z] [eventarc] Eventarc Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-10-22T21:38:36.068Z] [tasks] Cloud Tasks Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-10-22T21:38:36.068Z] late-assigned ports for functions and eventarc emulators {"user":{"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"ui":[{"address":"127.0.0.1","family":"IPv4","port":4000},{"address":"::1","family":"IPv6","port":4000}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}],"functions":[{"address":"0.0.0.0","family":"IPv4","port":8765}],"eventarc":[{"address":"127.0.0.1","family":"IPv4","port":9299}],"tasks":[{"address":"127.0.0.1","family":"IPv4","port":9499}]},"metadata":{"message":"late-assigned ports for functions and eventarc emulators"}}
+[warn] ⚠  functions: The following emulators are not running, calls to these services from the Functions emulator will affect production: apphosting, auth, firestore, database, hosting, pubsub, storage, dataconnect {"metadata":{"emulator":{"name":"functions"},"message":"The following emulators are not running, calls to these services from the Functions emulator will affect production: \u001b[1mapphosting, auth, firestore, database, hosting, pubsub, storage, dataconnect\u001b[22m"}}
+[debug] [2025-10-22T21:38:36.078Z] defaultcredentials: writing to file /Users/matthewbarge/.config/firebase/mbarge0_gmail_com_application_default_credentials.json
+[debug] [2025-10-22T21:38:36.079Z] Setting GAC to /Users/matthewbarge/.config/firebase/mbarge0_gmail_com_application_default_credentials.json {"metadata":{"emulator":{"name":"functions"},"message":"Setting GAC to /Users/matthewbarge/.config/firebase/mbarge0_gmail_com_application_default_credentials.json"}}
+[debug] [2025-10-22T21:38:36.080Z] Checked if tokens are valid: true, expires at: 1761170236266
+[debug] [2025-10-22T21:38:36.080Z] Checked if tokens are valid: true, expires at: 1761170236266
+[debug] [2025-10-22T21:38:36.080Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/worldchat-5a537/adminSdkConfig [none]
+[debug] [2025-10-22T21:38:36.491Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/worldchat-5a537/adminSdkConfig 200
+[debug] [2025-10-22T21:38:36.492Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/worldchat-5a537/adminSdkConfig {"projectId":"worldchat-5a537","databaseURL":"https://worldchat-5a537-default-rtdb.firebaseio.com","storageBucket":"worldchat-5a537.firebasestorage.app"}
+[info] i  functions: Watching "/Users/matthewbarge/DevProjects/worldchatios/functions" for Cloud Functions... {"metadata":{"emulator":{"name":"functions"},"message":"Watching \"/Users/matthewbarge/DevProjects/worldchatios/functions\" for Cloud Functions..."}}
+[debug] [2025-10-22T21:38:36.507Z] Validating nodejs source
+[debug] [2025-10-22T21:38:37.230Z] > [functions] package.json contents: {
+  "name": "worldchat-functions",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "engines": {
+    "node": "20"
+  },
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "serve": "firebase emulators:start --only functions",
+    "deploy": "firebase deploy --only functions",
+    "lint": "eslint src --ext .ts"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0",
+    "firebase-functions": "^6.6.0",
+    "openai": "^4.52.0",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "eslint": "^8.57.0",
+    "firebase-tools": "^14.20.0",
+    "typescript": "^5.4.0"
+  }
+}
+[debug] [2025-10-22T21:38:37.231Z] Building nodejs source
+[debug] [2025-10-22T21:38:37.231Z] Failed to find version of module node: reached end of search path /Users/matthewbarge/DevProjects/worldchatios/functions/node_modules
+[info] ✔  functions: Using node@20 from host. 
+[info] i  functions: Loaded environment variables from .env. 
+[debug] [2025-10-22T21:38:37.234Z] Could not find functions.yaml. Must use http discovery
+[debug] [2025-10-22T21:38:37.241Z] Found firebase-functions binary at '/Users/matthewbarge/DevProjects/worldchatios/functions/node_modules/.bin/firebase-functions'
+[info] Serving at port 8792
+
+[debug] [2025-10-22T21:38:37.635Z] Got response from /__/functions.yaml {"endpoints":{"askAI":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"httpsTrigger":{},"entryPoint":"askAI"},"generateSmartReplies":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"httpsTrigger":{},"entryPoint":"generateSmartReplies"}},"specVersion":"v1alpha1","requiredAPIs":[],"extensions":{}}
+[info] ✔  functions: Loaded functions definitions from source: askAI, generateSmartReplies. {"metadata":{"emulator":{"name":"functions"},"message":"Loaded functions definitions from source: askAI, generateSmartReplies."}}
+[info] ✔  functions[us-central1-askAI]: http function initialized (http://127.0.0.1:8765/worldchat-5a537/us-central1/askAI). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:8765/worldchat-5a537/us-central1/askAI)."}}
+[info] ✔  functions[us-central1-generateSmartReplies]: http function initialized (http://127.0.0.1:8765/worldchat-5a537/us-central1/generateSmartReplies). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:8765/worldchat-5a537/us-central1/generateSmartReplies)."}}
+[debug] [2025-10-22T21:38:41.679Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
+[info] 
+┌─────────────────────────────────────────────────────────────┐
+│ ✔  All emulators ready! It is now safe to connect your app. │
+│ i  View Emulator UI at http://127.0.0.1:4000/               │
+└─────────────────────────────────────────────────────────────┘
+
+┌───────────┬──────────────┬─────────────────────────────────┐
+│ Emulator  │ Host:Port    │ View in Emulator UI             │
+├───────────┼──────────────┼─────────────────────────────────┤
+│ Functions │ 0.0.0.0:8765 │ http://127.0.0.1:4000/functions │
+└───────────┴──────────────┴─────────────────────────────────┘
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4500
+
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 

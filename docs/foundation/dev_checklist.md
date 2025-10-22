@@ -148,22 +148,30 @@ Description: Dedicated AI assistant (RAG over recent messages) and context-aware
   - Testing: review
 
 [Build]
-- C.2 Implement `askAI()` Function with last N messages as context
+- C.2 Implement `askAI()` Function with last N messages as context (RAG)
   - Dependencies: C.1
-  - Acceptance: p95 response <3s; relevant answers
+  - Acceptance: p95 response <3s; relevant answers; recent-context RAG (last 20–40 msgs)
   - Testing: integration + golden prompts
-- C.3 Implement `generateSmartReplies()` with user style profile
+- C.3 Implement `generateSmartReplies()` with user style profile + tone control
   - Dependencies: C.1
-  - Acceptance: 3 bilingual suggestions <1.5s
+  - Acceptance: 3 bilingual suggestions <1.5s; respects tone (casual/neutral/formal)
   - Testing: integration
 - C.4 Client UI: AI modal and smart reply pills above keyboard
   - Dependencies: C.2, C.3, B.4
-  - Acceptance: accessible from chat; editable insertion
+  - Acceptance: accessible from chat; editable insertion; pills render on keyboard focus
   - Testing: UI/E2E
 - C.5 Caching and rate limiting in Functions
   - Dependencies: C.2, C.3
-  - Acceptance: TTLs applied; overload protected
+  - Acceptance: TTLs applied (smart replies ≥1h, Q&A ≥24h); per-user/per-conversation caps
   - Testing: logs/metrics
+- C.5a Client enhancements: prefetch, tone selector, long‑press Ask AI
+  - Dependencies: C.3, C.4
+  - Acceptance: prefetch on keyboard focus; tone selector present; long‑press message → “Ask AI (explain)” action
+  - Testing: UI/E2E + latency logs
+- C.5b Observability & auth hardening
+  - Dependencies: C.2–C.5
+  - Acceptance: latencyMs + cached flags logged; Functions verify Firebase ID token and (if enabled) App Check; 401/429 handled gracefully
+  - Testing: logs/metrics; negative auth tests
 
 [Debug]
 - C.6 AI timeout and fallback UX
