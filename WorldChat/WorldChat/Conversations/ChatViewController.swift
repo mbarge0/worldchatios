@@ -176,40 +176,46 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 	}
 
 	private func loadSmartReplies() {
-		let tone: AITone = {
+		let tone: String = {
 			switch self.toneControl.selectedSegmentIndex {
-			case 0: return .casual
-			case 2: return .formal
-			default: return .neutral
+			case 0: return "casual"
+			case 2: return "formal"
+			default: return "neutral"
 			}
 		}()
-		aiService.generateSmartReplies(conversationId: conversationId, tone: tone) { [weak self] result in
-			DispatchQueue.main.async {
-				self?.smartRepliesStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
-				switch result {
-				case .success(let suggestions):
-					for s in suggestions {
-						let pill = UIButton(type: .system)
-						pill.setTitle("\(s.translated)", for: .normal)
-						pill.titleLabel?.font = .systemFont(ofSize: 15, weight: .semibold)
-						pill.setTitleColor(Theme.textPrimary, for: .normal)
-						pill.backgroundColor = Theme.brandSecondary.withAlphaComponent(0.4)
-						pill.contentEdgeInsets = UIEdgeInsets(top: 10, left: 12, bottom: 10, right: 12)
-						pill.layer.cornerRadius = 16
-						pill.isAccessibilityElement = true
-						pill.accessibilityLabel = "Smart reply suggestion: \(s.translated)"
-						pill.addAction(UIAction(handler: { [weak self] _ in
-							self?.inputTextView.text = s.original
-							self?.textViewDidChange(self!.inputTextView)
-						}), for: .touchUpInside)
-						self?.smartRepliesStack.addArrangedSubview(pill)
-					}
-				case .failure:
+		Task { [weak self] in
+			guard let self = self else { return }
+			let suggestions: [SmartReply]
+			do {
+				suggestions = try await self.aiService.generateSmartReplies(conversationId: self.conversationId, tone: tone)
+			} catch {
+				DispatchQueue.main.async {
+					self.smartRepliesStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
 					let label = UILabel()
 					label.text = "Suggestions unavailable"
 					label.font = .systemFont(ofSize: 13)
 					label.textColor = .secondaryLabel
-					self?.smartRepliesStack.addArrangedSubview(label)
+					self.smartRepliesStack.addArrangedSubview(label)
+				}
+				return
+			}
+			DispatchQueue.main.async {
+				self.smartRepliesStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+				for s in suggestions {
+					let pill = UIButton(type: .system)
+					pill.setTitle("\(s.translated)", for: .normal)
+					pill.titleLabel?.font = .systemFont(ofSize: 15, weight: .semibold)
+					pill.setTitleColor(Theme.textPrimary, for: .normal)
+					pill.backgroundColor = Theme.brandSecondary.withAlphaComponent(0.4)
+					pill.contentEdgeInsets = UIEdgeInsets(top: 10, left: 12, bottom: 10, right: 12)
+					pill.layer.cornerRadius = 16
+					pill.isAccessibilityElement = true
+					pill.accessibilityLabel = "Smart reply suggestion: \(s.translated)"
+					pill.addAction(UIAction(handler: { [weak self] _ in
+						self?.inputTextView.text = s.original
+						if let tv = self?.inputTextView { self?.textViewDidChange(tv) }
+					}), for: .touchUpInside)
+					self.smartRepliesStack.addArrangedSubview(pill)
 				}
 			}
 		}
@@ -242,15 +248,18 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 			guard let self = self else { return }
 			let q = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 			guard !q.isEmpty else { return }
-			self.aiService.askAI(conversationId: self.conversationId, question: q, lastN: 20) { result in
-				DispatchQueue.main.async {
-					switch result {
-					case .success(let answer):
-						let a = UIAlertController(title: "Answer", message: answer, preferredStyle: .alert)
+			Task { [weak self] in
+				guard let self = self else { return }
+				do {
+					let resp = try await self.aiService.askAI(conversationId: self.conversationId, question: q)
+					DispatchQueue.main.async {
+						let a = UIAlertController(title: "Answer", message: resp.answer, preferredStyle: .alert)
 						a.addAction(UIAlertAction(title: "OK", style: .default))
 						self.present(a, animated: true)
-					case .failure:
-						let a = UIAlertController(title: "AI Unavailable", message: "Please try again shortly.", preferredStyle: .alert)
+					}
+				} catch {
+					DispatchQueue.main.async {
+						let a = UIAlertController(title: "AI Unavailable", message: error.localizedDescription, preferredStyle: .alert)
 						a.addAction(UIAlertAction(title: "OK", style: .default))
 						self.present(a, animated: true)
 					}
@@ -277,18 +286,18 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 			let explain = UIAction(title: "Ask AI (explain)", image: UIImage(systemName: "sparkles")) { [weak self] _ in
 				guard let self = self else { return }
 				let q = "Explain: \(message.text)"
-				self.aiService.askAI(conversationId: self.conversationId, question: q, lastN: 20) { result in
-					DispatchQueue.main.async {
-						let msg: String
-						switch result {
-						case .success(let answer): msg = answer
-						case .failure: msg = "AI temporarily unavailable"
-						}
-						let a = UIAlertController(title: "Explanation", message: msg, preferredStyle: .alert)
-						a.addAction(UIAlertAction(title: "OK", style: .default))
-						self.present(a, animated: true)
-					}
-				}
+                Task {
+                    do {
+                        let response = try await self.aiService.askAI(conversationId: self.conversationId, question: q)
+                        let alert = UIAlertController(title: "Explanation", message: response.answer, preferredStyle: .alert)
+                        alert.addAction(UIAlertAction(title: "OK", style: .default))
+                        self.present(alert, animated: true)
+                    } catch {
+                        let alert = UIAlertController(title: "Explanation", message: "AI temporarily unavailable", preferredStyle: .alert)
+                        alert.addAction(UIAlertAction(title: "OK", style: .default))
+                        self.present(alert, animated: true)
+                    }
+                }
 			}
 			return UIMenu(title: "", children: [explain])
 		}
