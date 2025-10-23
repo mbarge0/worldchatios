@@ -21,7 +21,7 @@ Please:
 2. Define and document the following categories clearly and concisely:
 
    ### 1. Color Palette
-   - Core brand, neutral, and semantic colors (success, warning, error).
+   - Use the color palette from Matt's personal brand at `/docs/operations/personal_brand.md`.
    - Include Tailwind-style tokens (`--color-primary`, `--color-bg`, etc.).
    - Provide both light and dark mode examples.
 
