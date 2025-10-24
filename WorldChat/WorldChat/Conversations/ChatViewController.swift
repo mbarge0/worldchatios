@@ -13,9 +13,11 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 
 	private var messages: [Message] = []
 	private var listener: ListenerRegistration?
+	private var convoListener: ListenerRegistration?
 	private var typingHandle: DatabaseHandle?
 	private var presenceHandle: DatabaseHandle?
 	private var preferredLang: String = "en"
+	private var participantLanguages: [String: String] = [:]
 
 	private lazy var collectionView: UICollectionView = {
 		let layout = UICollectionViewFlowLayout()
@@ -71,6 +73,16 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 					self.preferredLang = first
 					DispatchQueue.main.async { self.collectionView.reloadData() }
 				}
+			}
+		}
+		// Listen for conversation participantLanguages
+		convoListener?.remove()
+		convoListener = FirebaseService.firestore.collection("conversations").document(conversationId).addSnapshotListener { [weak self] snapshot, error in
+			guard let self = self else { return }
+			if let data = snapshot?.data(), let map = data["participantLanguages"] as? [String: String] {
+				self.participantLanguages = map
+				print("🧭 [ChatVC] participantLanguages updated: \(map)")
+				self.collectionView.reloadData()
 			}
 		}
 	}
@@ -240,11 +252,13 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 			guard let self = self else { return }
 			let countWithTranslations = msgs.filter { ($0.translations?.isEmpty == false) }.count
 			print("🟢 [ChatVC] messages updated: total=\(msgs.count), withTranslations=\(countWithTranslations)")
-			self.messages = msgs
-			self.collectionView.reloadData()
-			if self.messages.count > 0 {
-				let last = IndexPath(item: self.messages.count - 1, section: 0)
-				self.collectionView.scrollToItem(at: last, at: .bottom, animated: true)
+			DispatchQueue.main.async {
+				self.messages = msgs
+				self.collectionView.reloadData()
+				if self.messages.count > 0 {
+					let last = IndexPath(item: self.messages.count - 1, section: 0)
+					self.collectionView.scrollToItem(at: last, at: .bottom, animated: true)
+				}
 			}
 		}
 		if let typingHandle = typingHandle {
@@ -389,10 +403,16 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 	func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
 		let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! MessageCell
 		if indexPath.item < messages.count {
-			cell.configure(with: messages[indexPath.item], preferredLang: preferredLang)
+			let message = messages[indexPath.item]
+			let currentUid = FirebaseService.auth.currentUser?.uid ?? ""
+			let isOutgoing = (message.senderId == currentUid)
+			let usedLang = isOutgoing
+				? (participantLanguages[otherUserId] ?? preferredLang)
+				: (participantLanguages[currentUid] ?? preferredLang)
+			cell.configure(with: message, translationLang: usedLang)
 		} else {
 			let fallback = Message(id: UUID().uuidString, senderId: FirebaseService.auth.currentUser?.uid ?? "", text: "", timestamp: Date(), status: "sent", translations: nil, readBy: [])
-			cell.configure(with: fallback, preferredLang: preferredLang)
+			cell.configure(with: fallback, translationLang: preferredLang)
 		}
 		return cell
 	}
@@ -401,14 +421,19 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
         let maxWidth = collectionView.bounds.width * 0.75
-        let message = (indexPath.item < messages.count) ? messages[indexPath.item] : Message(id: "_", senderId: "_", text: " ", timestamp: Date(), status: "sent", translations: nil, readBy: [])
+		let message = (indexPath.item < messages.count) ? messages[indexPath.item] : Message(id: "_", senderId: "_", text: " ", timestamp: Date(), status: "sent", translations: nil, readBy: [])
         let text = (message.text.isEmpty ? " " : message.text) as NSString
         let attributes: [NSAttributedString.Key: Any] = [.font: UIFont.systemFont(ofSize: 17)]
         let bounding = text.boundingRect(with: CGSize(width: maxWidth - 24 - 24, height: CGFloat.greatestFiniteMagnitude),
                                          options: [.usesLineFragmentOrigin, .usesFontLeading],
                                          attributes: attributes,
                                          context: nil)
-        let translation = (message.translations?[preferredLang] ?? "") as NSString
+		let currentUid = FirebaseService.auth.currentUser?.uid ?? ""
+		let isOutgoing = (message.senderId == currentUid)
+		let usedLang = isOutgoing
+			? (participantLanguages[otherUserId] ?? preferredLang)
+			: (participantLanguages[currentUid] ?? preferredLang)
+		let translation = (message.translations?[usedLang] ?? "") as NSString
         let translationBounding = translation.boundingRect(with: CGSize(width: maxWidth - 24 - 24, height: CGFloat.greatestFiniteMagnitude),
                                                            options: [.usesLineFragmentOrigin, .usesFontLeading],
                                                            attributes: [.font: UIFont.systemFont(ofSize: 14)],
@@ -444,8 +469,8 @@ final class MessageCell: UICollectionViewCell {
 		bubble.layer.cornerRadius = 16
 		label.numberOfLines = 0
         translationLabel.numberOfLines = 0
-		translationLabel.font = .systemFont(ofSize: 14)
-		translationLabel.textColor = Theme.textMuted
+        translationLabel.font = .systemFont(ofSize: 14)
+        translationLabel.textColor = .secondaryLabel
 		sublabel.font = .systemFont(ofSize: 12)
 		sublabel.textColor = Theme.textMuted
 		imageView.contentMode = .scaleAspectFill
@@ -473,17 +498,17 @@ final class MessageCell: UICollectionViewCell {
 			leadingConstraint!, trailingConstraint!, maxWidthConstraint!,
 			bubble.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 4),
 			bubble.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -4),
-			label.topAnchor.constraint(equalTo: bubble.topAnchor, constant: 10),
-			label.leadingAnchor.constraint(equalTo: bubble.leadingAnchor, constant: 12),
-			label.trailingAnchor.constraint(equalTo: bubble.trailingAnchor, constant: -12),
-			imageView.topAnchor.constraint(equalTo: label.bottomAnchor, constant: 6),
-			imageView.leadingAnchor.constraint(equalTo: bubble.leadingAnchor, constant: 12),
-			imageView.trailingAnchor.constraint(lessThanOrEqualTo: bubble.trailingAnchor, constant: -12),
-			imageView.heightAnchor.constraint(equalToConstant: 160),
-			translationLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 6),
+            label.topAnchor.constraint(equalTo: bubble.topAnchor, constant: 10),
+            label.leadingAnchor.constraint(equalTo: bubble.leadingAnchor, constant: 12),
+            label.trailingAnchor.constraint(equalTo: bubble.trailingAnchor, constant: -12),
+            translationLabel.topAnchor.constraint(equalTo: label.bottomAnchor, constant: 6),
 			translationLabel.leadingAnchor.constraint(equalTo: bubble.leadingAnchor, constant: 12),
 			translationLabel.trailingAnchor.constraint(equalTo: bubble.trailingAnchor, constant: -12),
-			sublabel.topAnchor.constraint(equalTo: translationLabel.bottomAnchor, constant: 6),
+            imageView.topAnchor.constraint(equalTo: translationLabel.bottomAnchor, constant: 6),
+            imageView.leadingAnchor.constraint(equalTo: bubble.leadingAnchor, constant: 12),
+            imageView.trailingAnchor.constraint(lessThanOrEqualTo: bubble.trailingAnchor, constant: -12),
+            imageView.heightAnchor.constraint(equalToConstant: 160),
+            sublabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 6),
 			sublabel.leadingAnchor.constraint(equalTo: bubble.leadingAnchor, constant: 12),
 			sublabel.trailingAnchor.constraint(equalTo: bubble.trailingAnchor, constant: -12),
 			sublabel.bottomAnchor.constraint(equalTo: bubble.bottomAnchor, constant: -8)
@@ -492,15 +517,18 @@ final class MessageCell: UICollectionViewCell {
 
 	required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-	func configure(with message: Message, preferredLang: String) {
+	func configure(with message: Message, translationLang: String) {
 		label.text = message.text.isEmpty ? "" : message.text
-        if let t = message.translations?[preferredLang], !t.isEmpty {
+		if let t = message.translations?[translationLang], !t.isEmpty {
             translationLabel.text = t
             translationLabel.isHidden = false
         } else {
             translationLabel.text = "⟲ translation pending"
             translationLabel.isHidden = false
         }
+		let currentUid = FirebaseService.auth.currentUser?.uid ?? ""
+		let isOutgoing = (message.senderId == currentUid)
+		print("🧩 [MessageCell] id=\(message.id) usedLang=\(translationLang) outgoing=\(isOutgoing) hasTrans=\(message.translations?[translationLang] != nil)")
 		switch message.status {
 		case "sending": sublabel.text = "…"; sublabel.textColor = Theme.incomingMuted
 		case "sent": sublabel.text = "✓"; sublabel.textColor = Theme.incomingMuted
@@ -509,7 +537,7 @@ final class MessageCell: UICollectionViewCell {
 		default: sublabel.text = ""; sublabel.textColor = Theme.incomingMuted
 		}
 
-		let isOutgoing = message.senderId == FirebaseService.auth.currentUser?.uid
+		// reuse isOutgoing defined above
 		bubble.backgroundColor = isOutgoing ? Theme.brandPrimary : Theme.gold
 		label.textColor = isOutgoing ? Theme.outgoingText : Theme.textPrimary
 		translationLabel.textColor = isOutgoing ? Theme.outgoingMuted : Theme.textMuted
