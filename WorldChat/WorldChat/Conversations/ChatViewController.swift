@@ -617,7 +617,9 @@ final class MessageCell: UICollectionViewCell {
         self.messageForPlayback = message
         self.playbackLang = isOutgoing ? receiverLang : senderLang
         self.otherUserId = otherUserId
-        playButton.isHidden = false
+        let hasTranslation = (message.translations?[translationLang]?.isEmpty == false)
+        // Show for sender only when translation exists; receivers always have original text to speak
+        playButton.isHidden = isOutgoing ? !hasTranslation : false
 	}
 
     @objc private func didTapPlay() {
