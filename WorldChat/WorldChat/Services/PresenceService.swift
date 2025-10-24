@@ -7,7 +7,8 @@ final class PresenceService {
 
 	private let firestore: Firestore
 	private let database: Database
-	private var userStatusRef: DatabaseReference?
+    private var userPresenceRef: DatabaseReference?
+    private var userLegacyStatusRef: DatabaseReference?
 
 	init(firestore: Firestore = FirebaseService.firestore, database: Database = FirebaseService.realtimeDB) {
 		self.firestore = firestore
@@ -22,11 +23,17 @@ final class PresenceService {
 			"lastSeen": FieldValue.serverTimestamp()
 		], merge: true)
 
-		// RTDB: presence/{uid}
-		let ref = database.reference(withPath: "presence/\(userId)")
-		ref.setValue(["online": true, "lastSeen": ServerValue.timestamp()])
-		ref.onDisconnectUpdateChildValues(["online": false, "lastSeen": ServerValue.timestamp()])
-		userStatusRef = ref
+        // RTDB: presence/{uid} (current path)
+        let presenceRef = database.reference(withPath: "presence/\(userId)")
+        presenceRef.setValue(["online": true, "lastSeen": ServerValue.timestamp()])
+        presenceRef.onDisconnectUpdateChildValues(["online": false, "lastSeen": ServerValue.timestamp()])
+        userPresenceRef = presenceRef
+
+        // RTDB: status/{uid} (legacy/compat path)
+        let legacyRef = database.reference(withPath: "status/\(userId)")
+        legacyRef.setValue(["online": true, "lastSeen": ServerValue.timestamp()])
+        legacyRef.onDisconnectUpdateChildValues(["online": false, "lastSeen": ServerValue.timestamp()])
+        userLegacyStatusRef = legacyRef
 	}
 
 	func stop(for userId: String) {
@@ -36,9 +43,11 @@ final class PresenceService {
 			"lastSeen": FieldValue.serverTimestamp()
 		], merge: true)
 
-		// RTDB: mark offline immediately
-		let ref = userStatusRef ?? database.reference(withPath: "presence/\(userId)")
-		ref.updateChildValues(["online": false, "lastSeen": ServerValue.timestamp()])
+        // RTDB: mark offline immediately on both paths
+        let presenceRef = userPresenceRef ?? database.reference(withPath: "presence/\(userId)")
+        presenceRef.updateChildValues(["online": false, "lastSeen": ServerValue.timestamp()])
+        let legacyRef = userLegacyStatusRef ?? database.reference(withPath: "status/\(userId)")
+        legacyRef.updateChildValues(["online": false, "lastSeen": ServerValue.timestamp()])
 	}
 
 	// Backwards-compatible helpers

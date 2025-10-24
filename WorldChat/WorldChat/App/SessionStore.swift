@@ -34,7 +34,13 @@ final class SessionStore: ObservableObject {
 		authStateHandle = Auth.auth().addStateDidChangeListener { [weak self] _, user in
 			self?.currentUserId = user?.uid
 			self?.isAuthenticated = user != nil
-            Task { await self?.handleAuthChange(userId: user?.uid) }
+			// Presence auto-refresh for both new and returning users
+			if let uid = user?.uid {
+				PresenceService.shared.start(for: uid)
+			} else if let previousUid = self?.currentUserId {
+				PresenceService.shared.stop(for: previousUid)
+			}
+			Task { await self?.handleAuthChange(userId: user?.uid) }
 		}
 	}
 
