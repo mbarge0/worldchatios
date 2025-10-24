@@ -121,7 +121,9 @@ final class MessagingService {
 				case .removed: typeStr = "removed"
 				@unknown default: typeStr = "unknown"
 				}
-				return "\(typeStr) \(ch.document.documentID) trans=\(hasT)"
+				let tdict = ch.document.data()["translations"] as? [String: String]
+				let tkeys: [String] = tdict.map { Array($0.keys) } ?? []
+				return "\(typeStr) \(ch.document.documentID) trans=\(hasT) keys=\(tkeys)"
 			}.joined(separator: ", ")
 			print("🟡 [MessagingService] listenMessages update: total=\(docs.count), withTranslations=\(withTranslations); changes=[\(changesDesc)]")
 			let messages: [Message] = docs.compactMap { doc in
