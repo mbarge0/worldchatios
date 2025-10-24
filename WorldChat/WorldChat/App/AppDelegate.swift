@@ -59,13 +59,13 @@ final class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationC
 
 	func applicationDidBecomeActive(_ application: UIApplication) {
 		if let uid = Auth.auth().currentUser?.uid {
-			PresenceService().setOnline(for: uid)
+            PresenceService.shared.setOnline(for: uid)
 		}
 	}
 
 	func applicationWillResignActive(_ application: UIApplication) {
 		if let uid = Auth.auth().currentUser?.uid {
-			PresenceService().setBackground(for: uid)
+            PresenceService.shared.setBackground(for: uid)
 		}
 	}
 

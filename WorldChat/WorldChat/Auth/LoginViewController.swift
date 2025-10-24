@@ -81,6 +81,8 @@ final class LoginViewController: UIViewController {
 			print("🟢 [LoginVC] signIn start")
 			let uid = try await authService.signIn(email: email, password: password)
 			print("🟢 [LoginVC] signIn success uid=\(uid)")
+            // Ensure presence is refreshed immediately after explicit login
+            PresenceService.shared.start(for: uid)
 			DispatchQueue.main.async { [weak self] in
 				self?.presentConversations()
 			}

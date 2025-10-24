@@ -65,6 +65,19 @@ final class MessagingService {
 		}
 	}
 
+	func markAllAsRead(conversationId: String, otherUserId: String, currentUserId: String) {
+		let convoRef = firestore.collection("conversations").document(conversationId)
+		convoRef.collection("messages")
+			.whereField("senderId", isEqualTo: otherUserId)
+			.getDocuments { [weak self] snap, error in
+				guard error == nil, let docs = snap?.documents else { return }
+				for doc in docs {
+					let ref = convoRef.collection("messages").document(doc.documentID)
+					ref.setData(["readBy": FieldValue.arrayUnion([currentUserId]), "status": "read"], merge: true)
+				}
+			}
+	}
+
 	func createConversation(with otherUserId: String, completion: @escaping (Result<String, Error>) -> Void) {
 		guard let current = auth.currentUser?.uid else {
 			completion(.failure(NSError(domain: "MessagingService", code: 401, userInfo: [NSLocalizedDescriptionKey: "Not authenticated"])));
@@ -98,6 +111,19 @@ final class MessagingService {
 				onChange([])
 				return
 			}
+			let withTranslations = docs.filter { ($0.data()["translations"] as? [String: String])?.isEmpty == false }.count
+			let changesDesc: String = (snapshot?.documentChanges ?? []).map { ch in
+				let hasT = ((ch.document.data()["translations"] as? [String: String])?.isEmpty == false)
+				let typeStr: String
+				switch ch.type {
+				case .added: typeStr = "added"
+				case .modified: typeStr = "modified"
+				case .removed: typeStr = "removed"
+				@unknown default: typeStr = "unknown"
+				}
+				return "\(typeStr) \(ch.document.documentID) trans=\(hasT)"
+			}.joined(separator: ", ")
+			print("🟡 [MessagingService] listenMessages update: total=\(docs.count), withTranslations=\(withTranslations); changes=[\(changesDesc)]")
 			let messages: [Message] = docs.compactMap { doc in
 				let d = doc.data()
 				guard let senderId = d["senderId"] as? String,

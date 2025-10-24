@@ -3,17 +3,24 @@ import FirebaseAuth
 
 final class AuthService {
 	func signIn(email: String, password: String) async throws -> String {
-		let result = try await FirebaseService.auth.signIn(withEmail: email, password: password)
-		return result.user.uid
+        let result = try await FirebaseService.auth.signIn(withEmail: email, password: password)
+        let uid = result.user.uid
+        PresenceService.shared.start(for: uid)
+        return uid
 	}
 
 	func signUp(email: String, password: String) async throws -> String {
-		let result = try await FirebaseService.auth.createUser(withEmail: email, password: password)
-		return result.user.uid
+        let result = try await FirebaseService.auth.createUser(withEmail: email, password: password)
+        let uid = result.user.uid
+        PresenceService.shared.start(for: uid)
+        return uid
 	}
 
 	func signOut() throws {
-		try FirebaseService.auth.signOut()
+        if let uid = FirebaseService.auth.currentUser?.uid {
+            PresenceService.shared.stop(for: uid)
+        }
+        try FirebaseService.auth.signOut()
 	}
 }
 

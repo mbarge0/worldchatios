@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.openai = exports.OPENAI_MODEL = exports.OPENAI_API_KEY = void 0;
 const crypto = require("crypto");
 const dotenv = require("dotenv");
+const firestore_1 = require("firebase-functions/v2/firestore");
 const { getApps, initializeApp } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
 const { FieldValue, getFirestore } = require("firebase-admin/firestore");
@@ -262,4 +263,120 @@ const generateSmartReplies = functions.https.onRequest(async (req, res) => {
         res.status(500).json({ error: e?.message || "generateSmartReplies failed" });
     }
 });
-module.exports = { askAI, generateSmartReplies };
+// Translate newly created messages to the receiver's language (v2 trigger)
+exports.onMessageCreate = (0, firestore_1.onDocumentCreated)("conversations/{conversationId}/messages/{messageId}", async (event) => {
+    const { conversationId, messageId } = event.params || {};
+    try {
+        if (!exports.OPENAI_API_KEY) {
+            console.warn("onMessageCreate: Missing OPENAI_API_KEY");
+            return;
+        }
+        const snap = event.data;
+        if (!snap) {
+            console.log("onMessageCreate: No snapshot in event", { conversationId, messageId });
+            return;
+        }
+        const data = snap.data();
+        if (!data || !data.senderId || !data.text) {
+            console.log("onMessageCreate: Missing senderId or text", { conversationId, messageId });
+            return;
+        }
+        // Idempotency: if already translated to any language, and sender/receiver language would match that, skip later
+        const messageRef = db.collection("conversations").doc(conversationId).collection("messages").doc(messageId);
+        // Read conversation to identify receiver
+        const convoRef = db.collection("conversations").doc(conversationId);
+        const convoSnap = await convoRef.get();
+        if (!convoSnap.exists) {
+            console.log("onMessageCreate: Conversation not found", { conversationId });
+            return;
+        }
+        const convo = convoSnap.data();
+        const participants = Array.isArray(convo?.participants) ? convo.participants : [];
+        if (participants.length !== 2) {
+            console.log("onMessageCreate: Non 1:1 conversation, skipping", { conversationId, participantCount: participants.length });
+            return;
+        }
+        const senderId = data.senderId;
+        const receiverId = participants.find((p) => p !== senderId);
+        if (!receiverId) {
+            console.log("onMessageCreate: receiverId not resolved", { conversationId, senderId });
+            return;
+        }
+        // Resolve languages
+        const participantLanguages = (convo?.participantLanguages || {});
+        let senderLang = participantLanguages[senderId];
+        let receiverLang = participantLanguages[receiverId];
+        if (!senderLang || !receiverLang) {
+            const usersColl = db.collection("users");
+            const [senderSnap, receiverSnap] = await Promise.all([
+                usersColl.doc(senderId).get(),
+                usersColl.doc(receiverId).get(),
+            ]);
+            if (!senderLang)
+                senderLang = senderSnap.data()?.primaryLanguage || senderSnap.data()?.language || "en";
+            if (!receiverLang)
+                receiverLang = receiverSnap.data()?.primaryLanguage || receiverSnap.data()?.language || "en";
+        }
+        if (!senderLang || !receiverLang) {
+            console.log("onMessageCreate: Missing language info, skipping", { senderLang, receiverLang });
+            return;
+        }
+        if (senderLang === receiverLang) {
+            console.log("onMessageCreate: Languages match, no translation needed", { lang: senderLang });
+            return;
+        }
+        const targetLang = receiverLang.toLowerCase();
+        // Re-read to check idempotency (avoid duplicate work)
+        const latest = await messageRef.get();
+        const existing = latest.data()?.translations || {};
+        if (existing && typeof existing === "object" && Object.prototype.hasOwnProperty.call(existing, targetLang)) {
+            console.log("onMessageCreate: Translation already exists, skipping", { targetLang });
+            return;
+        }
+        const text = data.text.trim();
+        if (!text) {
+            console.log("onMessageCreate: Empty text, skipping");
+            return;
+        }
+        console.log("onMessageCreate: Translating", { conversationId, messageId, from: senderLang, to: targetLang });
+        const system = `You are a translation engine. Translate faithfully and naturally from ${senderLang} to ${targetLang}. Return only the translated sentence, with no quotes or extra commentary.`;
+        const userPrompt = `Source (${senderLang}): ${text}\nTarget (${targetLang}):`;
+        const start = Date.now();
+        const completion = await exports.openai.chat.completions.create({
+            model: exports.OPENAI_MODEL,
+            messages: [
+                { role: "system", content: system },
+                { role: "user", content: userPrompt },
+            ],
+            temperature: 0.2,
+            max_tokens: Math.min(400, Math.max(60, text.length + 20)),
+        });
+        const latencyMs = Date.now() - start;
+        const translatedRaw = completion.choices?.[0]?.message?.content || "";
+        const translated = translatedRaw
+            .replace(/^```[\s\S]*?```$/g, "")
+            .replace(/```[a-z]*\n?|```/gi, "")
+            .trim();
+        if (!translated) {
+            console.warn("onMessageCreate: Empty translation", { conversationId, messageId });
+            return;
+        }
+        // Final idempotency check before update
+        await db.runTransaction(async (tx) => {
+            const cur = await tx.get(messageRef);
+            const curData = cur.data();
+            const curTranslations = (curData?.translations || {});
+            if (Object.prototype.hasOwnProperty.call(curTranslations, targetLang)) {
+                // Another instance already wrote it
+                return;
+            }
+            const newTranslations = { ...curTranslations, [targetLang]: translated };
+            tx.set(messageRef, { translations: newTranslations }, { merge: true });
+        });
+        console.log("onMessageCreate: Translation saved", { targetLang, latencyMs });
+    }
+    catch (err) {
+        console.error("onMessageCreate: Failed to translate", { conversationId, messageId, error: err?.message || err });
+    }
+});
+module.exports = { askAI, generateSmartReplies, onMessageCreate: exports.onMessageCreate };

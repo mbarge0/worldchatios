@@ -14,6 +14,7 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 	private var typingHandles: [String: DatabaseHandle] = [:]
 	private var conversationIdToTyping: [String: Bool] = [:]
 	private var userIdToAvatarURL: [String: String] = [:]
+    private var statusHandles: [String: DatabaseHandle] = [:]
 
 	override func viewDidLoad() {
 		super.viewDidLoad()
@@ -63,6 +64,8 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 		presenceListeners.removeAll()
 		typingHandles.forEach { FirebaseService.realtimeDB.reference().removeObserver(withHandle: $0.value) }
 		typingHandles.removeAll()
+        statusHandles.forEach { FirebaseService.realtimeDB.reference().removeObserver(withHandle: $0.value) }
+        statusHandles.removeAll()
 	}
 
 	private func attachConversationsListener() {
@@ -95,23 +98,33 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 		typingHandles.forEach { FirebaseService.realtimeDB.reference().removeObserver(withHandle: $0.value) }
 		typingHandles.removeAll()
 		conversationIdToTyping.removeAll()
+        statusHandles.forEach { FirebaseService.realtimeDB.reference().removeObserver(withHandle: $0.value) }
+        statusHandles.removeAll()
 
 		let current = Auth.auth().currentUser?.uid ?? ""
 		let participantIds = Set(conversations.flatMap { $0.participants }.filter { $0 != current })
 		participantIds.forEach { uid in
-			let l = FirebaseService.firestore.collection("presence").document(uid).addSnapshotListener { [weak self] snap, _ in
+			let ref = FirebaseService.realtimeDB.reference(withPath: "status/\(uid)")
+			let handle = ref.observe(.value) { [weak self] snap in
 				guard let self = self else { return }
-				let online = (snap?.data()? ["online"] as? Bool) ?? false
+				var online = false
+				if let dict = snap.value as? [String: Any], let o = dict["online"] as? Bool {
+					online = o
+				}
 				self.userIdToOnline[uid] = online
+				// Update visible cells that include this uid (excluding current user)
 				self.tableView.visibleCells.forEach { cell in
 					if let indexPath = self.tableView.indexPath(for: cell) {
 						let convo = self.conversations[indexPath.row]
-						let other = convo.participants.first(where: { $0 != current }) ?? ""
-						if other == uid { self.applyPresence(on: cell, online: online) }
+						let others = convo.participants.filter { $0 != current }
+						if others.contains(uid) {
+							let anyOnline = others.contains(where: { self.userIdToOnline[$0] == true })
+							self.applyPresence(on: cell, online: anyOnline)
+						}
 					}
 				}
 			}
-			presenceListeners[uid] = l
+			statusHandles[uid] = handle
 		}
 
 		// Typing for each conversation: listen to other user's node
@@ -196,10 +209,10 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 		let c = conversations[indexPath.row]
 		let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
 		let current = Auth.auth().currentUser?.uid ?? ""
-		let other = c.participants.first(where: { $0 != current }) ?? ""
 		_ = configuredCell(for: c, cell: cell)
-		let online = userIdToOnline[other] ?? false
-		applyPresence(on: cell, online: online)
+		let others = c.participants.filter { $0 != current }
+		let anyOnline = others.contains(where: { userIdToOnline[$0] == true })
+		applyPresence(on: cell, online: anyOnline)
 		return cell
 	}
 

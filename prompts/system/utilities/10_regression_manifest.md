@@ -1,7 +1,7 @@
 ## Metadata
 - **Type:** System Prompt  
 - **Category:** Utilities → Regression Management  
-- **Output Path:** `/docs/operations/regression/00_master_regression_manifest.md`  
+- **Output Path:** `/docs/operations/regression_manifest.md`
 - **Mode:** Ask  
 - **Trigger Phase:** Product Initialization (Phase 00)
 
@@ -62,7 +62,7 @@ Please:
 ## Output Format
 
 The resulting document should be stored as:  
-`/docs/operations/regression/00_master_regression_manifest.md`
+`/docs/operations/regression_manifest.md`
 
 It should follow this structure:
 
