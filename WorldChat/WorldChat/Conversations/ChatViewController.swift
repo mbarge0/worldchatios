@@ -19,6 +19,7 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 	private var presenceHandle: DatabaseHandle?
 	private var preferredLang: String = "en"
 	private var participantLanguages: [String: String] = [:]
+    private var loggedVoicePrecheck: Set<String> = []
 
 	private lazy var collectionView: UICollectionView = {
 		let layout = UICollectionViewFlowLayout()
@@ -416,13 +417,41 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
             let receiverLang = participantLanguages[receiverId] ?? preferredLang
             // translation language for label always receiver's language from viewer perspective
             let translationLang = receiverLang
-            cell.configure(with: message, translationLang: translationLang, otherUserId: otherUserId, senderLang: senderLang, receiverLang: receiverLang)
+            let topText = isOutgoing ? (message.translations?[receiverLang] ?? "") : message.text
+            let bottomText = isOutgoing ? message.text : (message.translations?[receiverLang] ?? "⟲ translation pending")
+            let showDouble = message.readBy.contains(otherUserId)
+            let vm = MessageViewModel(messageId: message.id,
+                                      topText: topText.isEmpty ? (isOutgoing ? "⟲ translation pending" : message.text) : topText,
+                                      bottomText: bottomText,
+                                      voiceLanguage: isOutgoing ? receiverLang : senderLang,
+                                      isOutgoing: isOutgoing,
+                                      showDoubleCheck: showDouble,
+                                      profileImageURL: nil)
+            cell.apply(viewModel: vm)
+            // Debug visibility for voice for sender
+            let hasTrans = message.translations?[translationLang]?.isEmpty == false
+            if isOutgoing && !loggedVoicePrecheck.contains(message.id) {
+                loggedVoicePrecheck.insert(message.id)
+                print("🔊 [ChatVC] sender cell voice precheck id=\(message.id) trans[\(translationLang)]=\(hasTrans)")
+                if hasTrans {
+                    DispatchQueue.main.async {
+                        self.collectionView.reloadItems(at: [indexPath])
+                    }
+                }
+            }
 		} else {
 			let fallback = Message(id: UUID().uuidString, senderId: FirebaseService.auth.currentUser?.uid ?? "", text: "", timestamp: Date(), status: "sent", translations: nil, readBy: [])
             let currentUid = FirebaseService.auth.currentUser?.uid ?? ""
             let senderLang = participantLanguages[currentUid] ?? preferredLang
             let receiverLang = participantLanguages[otherUserId] ?? preferredLang
-            cell.configure(with: fallback, translationLang: preferredLang, otherUserId: otherUserId, senderLang: senderLang, receiverLang: receiverLang)
+            let vm = MessageViewModel(messageId: fallback.id,
+                                      topText: "",
+                                      bottomText: "⟲ translation pending",
+                                      voiceLanguage: senderLang,
+                                      isOutgoing: true,
+                                      showDoubleCheck: false,
+                                      profileImageURL: nil)
+            cell.apply(viewModel: vm)
 		}
 		return cell
 	}
@@ -454,6 +483,17 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
     }
 }
 
+// MARK: - ViewModel
+struct MessageViewModel {
+    let messageId: String
+    let topText: String
+    let bottomText: String
+    let voiceLanguage: String
+    let isOutgoing: Bool
+    let showDoubleCheck: Bool
+    let profileImageURL: String?
+}
+
 final class MessageCell: UICollectionViewCell {
 	private let avatarView = UIImageView()
 	private let bubble = UIView()
@@ -476,6 +516,7 @@ final class MessageCell: UICollectionViewCell {
     private var messageForPlayback: Message?
     private var playbackLang: String = "en"
     private var otherUserId: String = ""
+	private var currentViewModel: MessageViewModel?
 
 	override init(frame: CGRect) {
 		super.init(frame: frame)
@@ -515,7 +556,7 @@ final class MessageCell: UICollectionViewCell {
 
 		leadingConstraint = bubble.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 40)
 		trailingConstraint = bubble.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16)
-		maxWidthConstraint = bubble.widthAnchor.constraint(lessThanOrEqualToConstant: 280)
+		maxWidthConstraint = bubble.widthAnchor.constraint(lessThanOrEqualTo: contentView.widthAnchor, multiplier: 0.75)
 
         // Prebuild constraints for dynamic ordering
         cLabelTop = label.topAnchor.constraint(equalTo: bubble.topAnchor, constant: 10)
@@ -531,16 +572,16 @@ final class MessageCell: UICollectionViewCell {
 			avatarView.widthAnchor.constraint(equalToConstant: 28),
 			avatarView.heightAnchor.constraint(equalToConstant: 28),
 
-			leadingConstraint!, trailingConstraint!, maxWidthConstraint!,
-			bubble.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 4),
-			bubble.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -4),
+            /* leading/trailing toggled at configure time */ maxWidthConstraint!,
+			bubble.topAnchor.constraint(greaterThanOrEqualTo: contentView.topAnchor, constant: 4),
+			bubble.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -4),
             label.leadingAnchor.constraint(equalTo: bubble.leadingAnchor, constant: 12),
             label.trailingAnchor.constraint(equalTo: bubble.trailingAnchor, constant: -12),
 			translationLabel.leadingAnchor.constraint(equalTo: bubble.leadingAnchor, constant: 12),
 			translationLabel.trailingAnchor.constraint(equalTo: bubble.trailingAnchor, constant: -12),
             imageView.leadingAnchor.constraint(equalTo: bubble.leadingAnchor, constant: 12),
             imageView.trailingAnchor.constraint(lessThanOrEqualTo: bubble.trailingAnchor, constant: -12),
-            imageView.heightAnchor.constraint(equalToConstant: 160),
+			// no fixed image height; allow to compress to zero height when no media
             sublabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 6),
 			sublabel.leadingAnchor.constraint(equalTo: bubble.leadingAnchor, constant: 12),
 			sublabel.trailingAnchor.constraint(equalTo: bubble.trailingAnchor, constant: -12),
@@ -549,14 +590,14 @@ final class MessageCell: UICollectionViewCell {
             // Play button sits to the trailing side of bubble
             playButton.centerYAnchor.constraint(equalTo: bubble.centerYAnchor),
             playButton.leadingAnchor.constraint(equalTo: bubble.trailingAnchor, constant: 6),
-            playButton.widthAnchor.constraint(equalToConstant: 24),
-            playButton.heightAnchor.constraint(equalToConstant: 24)
+            playButton.widthAnchor.constraint(equalToConstant: 20),
+            playButton.heightAnchor.constraint(equalToConstant: 20)
 		])
 	}
 
 	required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-    func configure(with message: Message, translationLang: String, otherUserId: String, senderLang: String, receiverLang: String) {
+	func configure(with message: Message, translationLang: String, otherUserId: String, senderLang: String, receiverLang: String) {
 		label.text = message.text.isEmpty ? "" : message.text
         // translation on top for sender, bottom for receiver handled by constraints below
         let translationText = message.translations?[translationLang]
@@ -597,11 +638,19 @@ final class MessageCell: UICollectionViewCell {
             cTransTop.isActive = true
             cLabelBelowTrans.isActive = true
             cImageTopToLabel.isActive = true
+            // Horizontal toggling: sender uses trailing + width only
+            leadingConstraint.isActive = false
+            trailingConstraint.isActive = true
+            print("🔧 [MessageCell] constraints sender: transTop=\(cTransTop.isActive) labelBelowTrans=\(cLabelBelowTrans.isActive) imageTopLabel=\(cImageTopToLabel.isActive)")
         } else {
             // original on top
             cLabelTop.isActive = true
             cTransBelowLabel.isActive = true
             cImageTopToTrans.isActive = true
+            // Horizontal toggling: receiver uses leading + width only
+            leadingConstraint.isActive = true
+            trailingConstraint.isActive = false
+            print("🔧 [MessageCell] constraints receiver: labelTop=\(cLabelTop.isActive) transBelowLabel=\(cTransBelowLabel.isActive) imageTopTrans=\(cImageTopToTrans.isActive)")
         }
 
         // reuse isOutgoing defined above
@@ -620,24 +669,78 @@ final class MessageCell: UICollectionViewCell {
         let hasTranslation = (message.translations?[translationLang]?.isEmpty == false)
         // Show for sender only when translation exists; receivers always have original text to speak
         playButton.isHidden = isOutgoing ? !hasTranslation : false
+        // Fallback: if translation now exists (post-update), force visible
+        if hasTranslation { playButton.isHidden = false }
+        print("🔊 [MessageCell] voiceVisibility id=\(message.id) outgoing=\(isOutgoing) trans[\(translationLang)]=\(hasTranslation) hidden=\(playButton.isHidden) reconfigured=true")
+	}
+
+	func apply(viewModel: MessageViewModel) {
+		currentViewModel = viewModel
+		// Text content
+		label.text = viewModel.topText
+		translationLabel.text = viewModel.bottomText
+		translationLabel.isHidden = viewModel.bottomText.isEmpty
+
+		// Toggle vertical ordering
+		cLabelTop.isActive = false
+		cTransTop.isActive = false
+		cTransBelowLabel.isActive = false
+		cLabelBelowTrans.isActive = false
+		cImageTopToTrans.isActive = false
+		cImageTopToLabel.isActive = false
+		if viewModel.isOutgoing {
+			cTransTop.isActive = true
+			cLabelBelowTrans.isActive = true
+			cImageTopToLabel.isActive = true
+			leadingConstraint.isActive = false
+			trailingConstraint.isActive = true
+		} else {
+			cLabelTop.isActive = true
+			cTransBelowLabel.isActive = true
+			cImageTopToTrans.isActive = true
+			leadingConstraint.isActive = true
+			trailingConstraint.isActive = false
+		}
+
+		// Styling
+		bubble.backgroundColor = viewModel.isOutgoing ? Theme.brandPrimary : Theme.gold
+		label.textColor = viewModel.isOutgoing ? Theme.outgoingText : Theme.textPrimary
+		translationLabel.textColor = viewModel.isOutgoing ? Theme.outgoingMuted : Theme.textMuted
+		sublabel.textColor = viewModel.isOutgoing ? Theme.outgoingMuted : Theme.textMuted
+		bubble.layer.maskedCorners = viewModel.isOutgoing ? [.layerMinXMinYCorner, .layerMinXMaxYCorner, .layerMaxXMinYCorner] : [.layerMaxXMinYCorner, .layerMaxXMaxYCorner, .layerMinXMinYCorner]
+		avatarView.isHidden = viewModel.isOutgoing
+
+		// Receipts
+		sublabel.text = viewModel.showDoubleCheck ? "✓✓" : "✓"
+		sublabel.textColor = viewModel.showDoubleCheck ? .systemRed : (viewModel.isOutgoing ? Theme.outgoingMuted : Theme.incomingMuted)
+
+		// Playback
+		self.messageForPlayback = nil
+		self.playbackLang = viewModel.voiceLanguage
+		self.otherUserId = ""
+		playButton.isHidden = viewModel.topText.isEmpty
+	}
+
+	override func prepareForReuse() {
+		super.prepareForReuse()
+		translationLabel.text = nil
+		label.text = nil
+		playButton.isHidden = true
+		// Deactivate dynamic order constraints to avoid conflicts during reuse
+		cLabelTop.isActive = false
+		cTransTop.isActive = false
+		cTransBelowLabel.isActive = false
+		cLabelBelowTrans.isActive = false
+		cImageTopToTrans.isActive = false
+		cImageTopToLabel.isActive = false
 	}
 
     @objc private func didTapPlay() {
-        guard let message = messageForPlayback else { return }
-        // Decide which text to speak based on viewer role (sender vs receiver)
-        let currentUid = FirebaseService.auth.currentUser?.uid ?? ""
-        let isOutgoing = (message.senderId == currentUid)
-        let toSpeak: String
-        if isOutgoing {
-            // Sender: speak the receiver's translation
-            toSpeak = message.translations?[playbackLang] ?? ""
-        } else {
-            // Receiver: speak the original (foreign) text
-            toSpeak = message.text
-        }
+		guard let vm = currentViewModel else { return }
+		let toSpeak = vm.topText
         guard !toSpeak.isEmpty else { return }
         let utterance = AVSpeechUtterance(string: toSpeak)
-        utterance.voice = AVSpeechSynthesisVoice(language: playbackLang)
+		utterance.voice = AVSpeechSynthesisVoice(language: vm.voiceLanguage)
         utterance.rate = AVSpeechUtteranceDefaultSpeechRate
         UIView.animate(withDuration: 0.12, animations: { self.playButton.alpha = 0.4 }) { _ in
             UIView.animate(withDuration: 0.2) { self.playButton.alpha = 0.9 }
