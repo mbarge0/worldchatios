@@ -65,6 +65,19 @@ final class MessagingService {
 		}
 	}
 
+	func markAllAsRead(conversationId: String, otherUserId: String, currentUserId: String) {
+		let convoRef = firestore.collection("conversations").document(conversationId)
+		convoRef.collection("messages")
+			.whereField("senderId", isEqualTo: otherUserId)
+			.getDocuments { [weak self] snap, error in
+				guard error == nil, let docs = snap?.documents else { return }
+				for doc in docs {
+					let ref = convoRef.collection("messages").document(doc.documentID)
+					ref.setData(["readBy": FieldValue.arrayUnion([currentUserId]), "status": "read"], merge: true)
+				}
+			}
+	}
+
 	func createConversation(with otherUserId: String, completion: @escaping (Result<String, Error>) -> Void) {
 		guard let current = auth.currentUser?.uid else {
 			completion(.failure(NSError(domain: "MessagingService", code: 401, userInfo: [NSLocalizedDescriptionKey: "Not authenticated"])));

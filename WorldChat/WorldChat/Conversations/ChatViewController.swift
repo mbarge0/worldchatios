@@ -1,4 +1,5 @@
 import UIKit
+import AVFoundation
 import FirebaseAuth
 import FirebaseFirestore
 import FirebaseDatabase
@@ -261,6 +262,10 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 				}
 			}
 		}
+		// Mark messages from the other user as read when opening/refreshing
+		if let current = FirebaseService.auth.currentUser?.uid {
+			messaging.markAllAsRead(conversationId: conversationId, otherUserId: otherUserId, currentUserId: current)
+		}
 		if let typingHandle = typingHandle {
 			FirebaseService.realtimeDB.reference().removeObserver(withHandle: typingHandle)
 		}
@@ -400,7 +405,7 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 		max(0, messages.count)
 	}
 
-	func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
 		let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! MessageCell
 		if indexPath.item < messages.count {
 			let message = messages[indexPath.item]
@@ -409,10 +414,10 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 			let usedLang = isOutgoing
 				? (participantLanguages[otherUserId] ?? preferredLang)
 				: (participantLanguages[currentUid] ?? preferredLang)
-			cell.configure(with: message, translationLang: usedLang)
+            cell.configure(with: message, translationLang: usedLang, otherUserId: otherUserId)
 		} else {
 			let fallback = Message(id: UUID().uuidString, senderId: FirebaseService.auth.currentUser?.uid ?? "", text: "", timestamp: Date(), status: "sent", translations: nil, readBy: [])
-			cell.configure(with: fallback, translationLang: preferredLang)
+            cell.configure(with: fallback, translationLang: preferredLang, otherUserId: otherUserId)
 		}
 		return cell
 	}
@@ -451,9 +456,15 @@ final class MessageCell: UICollectionViewCell {
 	private let translationLabel = UILabel()
 	private let sublabel = UILabel() // receipts
 	private let imageView = UIImageView()
+    private let playButton = UIButton(type: .system)
+    private let speechSynth = AVSpeechSynthesizer()
 	private var leadingConstraint: NSLayoutConstraint!
 	private var trailingConstraint: NSLayoutConstraint!
 	private var maxWidthConstraint: NSLayoutConstraint!
+    private var trailingPlayConstraint: NSLayoutConstraint!
+    private var messageForPlayback: Message?
+    private var playbackLang: String = "en"
+    private var otherUserId: String = ""
 
 	override init(frame: CGRect) {
 		super.init(frame: frame)
@@ -480,10 +491,16 @@ final class MessageCell: UICollectionViewCell {
 		translationLabel.translatesAutoresizingMaskIntoConstraints = false
 		sublabel.translatesAutoresizingMaskIntoConstraints = false
 		imageView.translatesAutoresizingMaskIntoConstraints = false
+        playButton.translatesAutoresizingMaskIntoConstraints = false
+        playButton.setImage(UIImage(systemName: "speaker.wave.2.fill"), for: .normal)
+        playButton.tintColor = .secondaryLabel
+        playButton.alpha = 0.9
+        playButton.addTarget(self, action: #selector(didTapPlay), for: .touchUpInside)
 		bubble.addSubview(label)
 		bubble.addSubview(translationLabel)
 		bubble.addSubview(imageView)
 		bubble.addSubview(sublabel)
+        contentView.addSubview(playButton)
 
 		leadingConstraint = bubble.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 40)
 		trailingConstraint = bubble.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16)
@@ -511,13 +528,19 @@ final class MessageCell: UICollectionViewCell {
             sublabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 6),
 			sublabel.leadingAnchor.constraint(equalTo: bubble.leadingAnchor, constant: 12),
 			sublabel.trailingAnchor.constraint(equalTo: bubble.trailingAnchor, constant: -12),
-			sublabel.bottomAnchor.constraint(equalTo: bubble.bottomAnchor, constant: -8)
+            sublabel.bottomAnchor.constraint(equalTo: bubble.bottomAnchor, constant: -8),
+
+            // Play button sits to the trailing side of bubble
+            playButton.centerYAnchor.constraint(equalTo: bubble.centerYAnchor),
+            playButton.leadingAnchor.constraint(equalTo: bubble.trailingAnchor, constant: 6),
+            playButton.widthAnchor.constraint(equalToConstant: 24),
+            playButton.heightAnchor.constraint(equalToConstant: 24)
 		])
 	}
 
 	required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-	func configure(with message: Message, translationLang: String) {
+    func configure(with message: Message, translationLang: String, otherUserId: String) {
 		label.text = message.text.isEmpty ? "" : message.text
 		if let t = message.translations?[translationLang], !t.isEmpty {
             translationLabel.text = t
@@ -529,15 +552,26 @@ final class MessageCell: UICollectionViewCell {
 		let currentUid = FirebaseService.auth.currentUser?.uid ?? ""
 		let isOutgoing = (message.senderId == currentUid)
 		print("🧩 [MessageCell] id=\(message.id) usedLang=\(translationLang) outgoing=\(isOutgoing) hasTrans=\(message.translations?[translationLang] != nil)")
-		switch message.status {
-		case "sending": sublabel.text = "…"; sublabel.textColor = Theme.incomingMuted
-		case "sent": sublabel.text = "✓"; sublabel.textColor = Theme.incomingMuted
-		case "delivered": sublabel.text = "✓✓"; sublabel.textColor = Theme.incomingMuted
-		case "read": sublabel.text = "✓✓"; sublabel.textColor = Theme.receiptRead
-		default: sublabel.text = ""; sublabel.textColor = Theme.incomingMuted
-		}
+        // Delivery/read receipts with double check when read
+        let otherId = otherUserId
+        let isReadByOther = message.readBy.contains(otherId)
+        if isReadByOther {
+            let check1 = "✓"
+            let check2 = "✓"
+            let combined = "\(check1)\(check2)"
+            sublabel.text = combined
+            sublabel.textColor = .systemRed
+        } else {
+            switch message.status {
+            case "sending": sublabel.text = "…"; sublabel.textColor = Theme.incomingMuted
+            case "sent": sublabel.text = "✓"; sublabel.textColor = Theme.incomingMuted
+            case "delivered": sublabel.text = "✓✓"; sublabel.textColor = Theme.incomingMuted
+            case "read": sublabel.text = "✓✓"; sublabel.textColor = Theme.receiptRead
+            default: sublabel.text = ""; sublabel.textColor = Theme.incomingMuted
+            }
+        }
 
-		// reuse isOutgoing defined above
+        // reuse isOutgoing defined above
 		bubble.backgroundColor = isOutgoing ? Theme.brandPrimary : Theme.gold
 		label.textColor = isOutgoing ? Theme.outgoingText : Theme.textPrimary
 		translationLabel.textColor = isOutgoing ? Theme.outgoingMuted : Theme.textMuted
@@ -546,8 +580,26 @@ final class MessageCell: UICollectionViewCell {
 		leadingConstraint.isActive = !isOutgoing
 		trailingConstraint.isActive = isOutgoing
 		avatarView.isHidden = isOutgoing
-        // no-op
+        // Store for playback
+        self.messageForPlayback = message
+        self.playbackLang = translationLang
+        self.otherUserId = otherUserId
+        playButton.isHidden = (message.translations?[translationLang]?.isEmpty ?? true)
 	}
+
+    @objc private func didTapPlay() {
+        guard let message = messageForPlayback else { return }
+        let text = message.translations?[playbackLang] ?? ""
+        guard !text.isEmpty else { return }
+        let utterance = AVSpeechUtterance(string: text)
+        utterance.voice = AVSpeechSynthesisVoice(language: playbackLang)
+        utterance.rate = AVSpeechUtteranceDefaultSpeechRate
+        UIView.animate(withDuration: 0.12, animations: { self.playButton.alpha = 0.4 }) { _ in
+            UIView.animate(withDuration: 0.2) { self.playButton.alpha = 0.9 }
+        }
+        speechSynth.stopSpeaking(at: .immediate)
+        speechSynth.speak(utterance)
+    }
 
 	func setAvatarURL(_ urlString: String?) {
 		guard let s = urlString, let url = URL(string: s) else { avatarView.isHidden = true; return }
