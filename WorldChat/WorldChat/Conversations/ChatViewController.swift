@@ -8,12 +8,14 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 	private let otherUserId: String
 	private let chatTitle: String?
 	private let messaging = MessagingService()
+	private let profileService = ProfileService()
 	private let sendQueue = SendQueueService()
 
 	private var messages: [Message] = []
 	private var listener: ListenerRegistration?
 	private var typingHandle: DatabaseHandle?
 	private var presenceHandle: DatabaseHandle?
+	private var preferredLang: String = "en"
 
 	private lazy var collectionView: UICollectionView = {
 		let layout = UICollectionViewFlowLayout()
@@ -60,6 +62,17 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 		setupViews()
 		attachMessageAndTypingListeners()
 		sendQueue.start()
+
+		// Load current user's preferred language (first selected language or fallback)
+		if let uid = FirebaseService.auth.currentUser?.uid {
+			Task { [weak self] in
+				guard let self = self else { return }
+				if let profile = try? await self.profileService.fetchProfile(uid: uid), let first = profile.languages.first, !first.isEmpty {
+					self.preferredLang = first
+					DispatchQueue.main.async { self.collectionView.reloadData() }
+				}
+			}
+		}
 	}
 
 	override func viewWillAppear(_ animated: Bool) {
@@ -225,6 +238,8 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 		listener?.remove()
 		listener = messaging.listenMessages(conversationId: conversationId) { [weak self] msgs in
 			guard let self = self else { return }
+			let countWithTranslations = msgs.filter { ($0.translations?.isEmpty == false) }.count
+			print("🟢 [ChatVC] messages updated: total=\(msgs.count), withTranslations=\(countWithTranslations)")
 			self.messages = msgs
 			self.collectionView.reloadData()
 			if self.messages.count > 0 {
@@ -374,34 +389,34 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 	func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
 		let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! MessageCell
 		if indexPath.item < messages.count {
-			cell.configure(with: messages[indexPath.item])
+			cell.configure(with: messages[indexPath.item], preferredLang: preferredLang)
 		} else {
 			let fallback = Message(id: UUID().uuidString, senderId: FirebaseService.auth.currentUser?.uid ?? "", text: "", timestamp: Date(), status: "sent", translations: nil, readBy: [])
-			cell.configure(with: fallback)
+			cell.configure(with: fallback, preferredLang: preferredLang)
 		}
 		return cell
 	}
 
-	// MARK: - Collection sizing (safe heights)
+    // MARK: - Collection sizing (safe heights)
 
-	func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
-		let maxWidth = collectionView.bounds.width * 0.75
-		let message = (indexPath.item < messages.count) ? messages[indexPath.item] : Message(id: "_", senderId: "_", text: " ", timestamp: Date(), status: "sent", translations: nil, readBy: [])
-		let text = (message.text.isEmpty ? " " : message.text) as NSString
-		let attributes: [NSAttributedString.Key: Any] = [.font: UIFont.systemFont(ofSize: 17)]
-		let bounding = text.boundingRect(with: CGSize(width: maxWidth - 24 - 24, height: CGFloat.greatestFiniteMagnitude),
-									 options: [.usesLineFragmentOrigin, .usesFontLeading],
-									 attributes: attributes,
-									 context: nil)
-		let translation = (message.translations?["en"] ?? "") as NSString
-		let translationBounding = translation.boundingRect(with: CGSize(width: maxWidth - 24 - 24, height: CGFloat.greatestFiniteMagnitude),
-																 options: [.usesLineFragmentOrigin, .usesFontLeading],
-																 attributes: [.font: UIFont.systemFont(ofSize: 14)],
-																 context: nil)
-		let baseHeights: CGFloat = 10 + 6 + 6 + 8
-		let height = max(44, ceil(bounding.height) + ceil(translationBounding.height) + baseHeights)
-		return CGSize(width: collectionView.bounds.width, height: height.isFinite ? height : 44)
-	}
+    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
+        let maxWidth = collectionView.bounds.width * 0.75
+        let message = (indexPath.item < messages.count) ? messages[indexPath.item] : Message(id: "_", senderId: "_", text: " ", timestamp: Date(), status: "sent", translations: nil, readBy: [])
+        let text = (message.text.isEmpty ? " " : message.text) as NSString
+        let attributes: [NSAttributedString.Key: Any] = [.font: UIFont.systemFont(ofSize: 17)]
+        let bounding = text.boundingRect(with: CGSize(width: maxWidth - 24 - 24, height: CGFloat.greatestFiniteMagnitude),
+                                         options: [.usesLineFragmentOrigin, .usesFontLeading],
+                                         attributes: attributes,
+                                         context: nil)
+        let translation = (message.translations?[preferredLang] ?? "") as NSString
+        let translationBounding = translation.boundingRect(with: CGSize(width: maxWidth - 24 - 24, height: CGFloat.greatestFiniteMagnitude),
+                                                           options: [.usesLineFragmentOrigin, .usesFontLeading],
+                                                           attributes: [.font: UIFont.systemFont(ofSize: 14)],
+                                                           context: nil)
+        let baseHeights: CGFloat = 10 + 6 + 6 + 8
+        let height = max(44, ceil(bounding.height) + ceil(translationBounding.height) + baseHeights)
+        return CGSize(width: collectionView.bounds.width, height: height.isFinite ? height : 44)
+    }
 }
 
 final class MessageCell: UICollectionViewCell {
@@ -428,7 +443,7 @@ final class MessageCell: UICollectionViewCell {
 		bubble.translatesAutoresizingMaskIntoConstraints = false
 		bubble.layer.cornerRadius = 16
 		label.numberOfLines = 0
-		translationLabel.numberOfLines = 0
+        translationLabel.numberOfLines = 0
 		translationLabel.font = .systemFont(ofSize: 14)
 		translationLabel.textColor = Theme.textMuted
 		sublabel.font = .systemFont(ofSize: 12)
@@ -477,16 +492,15 @@ final class MessageCell: UICollectionViewCell {
 
 	required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-	func configure(with message: Message) {
+	func configure(with message: Message, preferredLang: String) {
 		label.text = message.text.isEmpty ? "" : message.text
-		let preferredLang = "en"
-		if let t = message.translations?[preferredLang], !t.isEmpty {
-			translationLabel.text = t
-			translationLabel.isHidden = false
-		} else {
-			translationLabel.text = "⟲ translation pending"
-			translationLabel.isHidden = false
-		}
+        if let t = message.translations?[preferredLang], !t.isEmpty {
+            translationLabel.text = t
+            translationLabel.isHidden = false
+        } else {
+            translationLabel.text = "⟲ translation pending"
+            translationLabel.isHidden = false
+        }
 		switch message.status {
 		case "sending": sublabel.text = "…"; sublabel.textColor = Theme.incomingMuted
 		case "sent": sublabel.text = "✓"; sublabel.textColor = Theme.incomingMuted
@@ -504,6 +518,7 @@ final class MessageCell: UICollectionViewCell {
 		leadingConstraint.isActive = !isOutgoing
 		trailingConstraint.isActive = isOutgoing
 		avatarView.isHidden = isOutgoing
+        // no-op
 	}
 
 	func setAvatarURL(_ urlString: String?) {

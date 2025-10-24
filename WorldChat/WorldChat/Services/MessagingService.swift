@@ -98,6 +98,12 @@ final class MessagingService {
 				onChange([])
 				return
 			}
+			let withTranslations = docs.filter { ($0.data()["translations"] as? [String: String])?.isEmpty == false }.count
+			let changesDesc: String = (snapshot?.documentChanges ?? []).map { ch in
+				let hasT = ((ch.document.data()["translations"] as? [String: String])?.isEmpty == false)
+				return "\(ch.type) \(ch.document.documentID) trans=\(hasT)"
+			}.joined(separator: ", ")
+			print("🟡 [MessagingService] listenMessages update: total=\(docs.count), withTranslations=\(withTranslations); changes=[\(changesDesc)]")
 			let messages: [Message] = docs.compactMap { doc in
 				let d = doc.data()
 				guard let senderId = d["senderId"] as? String,
