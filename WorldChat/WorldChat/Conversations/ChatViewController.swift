@@ -407,17 +407,22 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
 		let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! MessageCell
-		if indexPath.item < messages.count {
-			let message = messages[indexPath.item]
-			let currentUid = FirebaseService.auth.currentUser?.uid ?? ""
-			let isOutgoing = (message.senderId == currentUid)
-			let usedLang = isOutgoing
-				? (participantLanguages[otherUserId] ?? preferredLang)
-				: (participantLanguages[currentUid] ?? preferredLang)
-            cell.configure(with: message, translationLang: usedLang, otherUserId: otherUserId)
+        if indexPath.item < messages.count {
+            let message = messages[indexPath.item]
+            let currentUid = FirebaseService.auth.currentUser?.uid ?? ""
+            let isOutgoing = (message.senderId == currentUid)
+            let senderLang = participantLanguages[message.senderId] ?? preferredLang
+            let receiverId = isOutgoing ? otherUserId : currentUid
+            let receiverLang = participantLanguages[receiverId] ?? preferredLang
+            // translation language for label always receiver's language from viewer perspective
+            let translationLang = receiverLang
+            cell.configure(with: message, translationLang: translationLang, otherUserId: otherUserId, senderLang: senderLang, receiverLang: receiverLang)
 		} else {
 			let fallback = Message(id: UUID().uuidString, senderId: FirebaseService.auth.currentUser?.uid ?? "", text: "", timestamp: Date(), status: "sent", translations: nil, readBy: [])
-            cell.configure(with: fallback, translationLang: preferredLang, otherUserId: otherUserId)
+            let currentUid = FirebaseService.auth.currentUser?.uid ?? ""
+            let senderLang = participantLanguages[currentUid] ?? preferredLang
+            let receiverLang = participantLanguages[otherUserId] ?? preferredLang
+            cell.configure(with: fallback, translationLang: preferredLang, otherUserId: otherUserId, senderLang: senderLang, receiverLang: receiverLang)
 		}
 		return cell
 	}
@@ -551,18 +556,15 @@ final class MessageCell: UICollectionViewCell {
 
 	required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-    func configure(with message: Message, translationLang: String, otherUserId: String) {
+    func configure(with message: Message, translationLang: String, otherUserId: String, senderLang: String, receiverLang: String) {
 		label.text = message.text.isEmpty ? "" : message.text
-		if let t = message.translations?[translationLang], !t.isEmpty {
-            translationLabel.text = t
-            translationLabel.isHidden = false
-        } else {
-            translationLabel.text = "⟲ translation pending"
-            translationLabel.isHidden = false
-        }
+        // translation on top for sender, bottom for receiver handled by constraints below
+        let translationText = message.translations?[translationLang]
+        translationLabel.text = (translationText?.isEmpty == false) ? translationText : "⟲ translation pending"
+        translationLabel.isHidden = false
 		let currentUid = FirebaseService.auth.currentUser?.uid ?? ""
 		let isOutgoing = (message.senderId == currentUid)
-		print("🧩 [MessageCell] id=\(message.id) usedLang=\(translationLang) outgoing=\(isOutgoing) hasTrans=\(message.translations?[translationLang] != nil)")
+        print("🧩 [MessageCell] id=\(message.id) usedLang=\(translationLang) outgoing=\(isOutgoing) senderLang=\(senderLang) receiverLang=\(receiverLang) hasTrans=\(message.translations?[translationLang] != nil)")
         // Delivery/read receipts with double check when read
         let otherId = otherUserId
         let isReadByOther = message.readBy.contains(otherId)
@@ -611,18 +613,28 @@ final class MessageCell: UICollectionViewCell {
 		leadingConstraint.isActive = !isOutgoing
 		trailingConstraint.isActive = isOutgoing
 		avatarView.isHidden = isOutgoing
-        // Store for playback
+        // Store for playback; we will decide which text/lang to speak at tap time using role
         self.messageForPlayback = message
-        self.playbackLang = translationLang
+        self.playbackLang = isOutgoing ? receiverLang : senderLang
         self.otherUserId = otherUserId
-        playButton.isHidden = (message.translations?[translationLang]?.isEmpty ?? true)
+        playButton.isHidden = false
 	}
 
     @objc private func didTapPlay() {
         guard let message = messageForPlayback else { return }
-        let text = message.translations?[playbackLang] ?? ""
-        guard !text.isEmpty else { return }
-        let utterance = AVSpeechUtterance(string: text)
+        // Decide which text to speak based on viewer role (sender vs receiver)
+        let currentUid = FirebaseService.auth.currentUser?.uid ?? ""
+        let isOutgoing = (message.senderId == currentUid)
+        let toSpeak: String
+        if isOutgoing {
+            // Sender: speak the receiver's translation
+            toSpeak = message.translations?[playbackLang] ?? ""
+        } else {
+            // Receiver: speak the original (foreign) text
+            toSpeak = message.text
+        }
+        guard !toSpeak.isEmpty else { return }
+        let utterance = AVSpeechUtterance(string: toSpeak)
         utterance.voice = AVSpeechSynthesisVoice(language: playbackLang)
         utterance.rate = AVSpeechUtteranceDefaultSpeechRate
         UIView.animate(withDuration: 0.12, animations: { self.playButton.alpha = 0.4 }) { _ in
