@@ -15,7 +15,7 @@
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>FunctionsBaseURL</key>
-	<string>http://127.0.0.1:8765/worldchat-5a537/us-central1</string>
+	<string>https://us-central1-worldchat-5a537.cloudfunctions.net</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>

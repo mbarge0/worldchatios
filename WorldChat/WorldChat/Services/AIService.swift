@@ -1,4 +1,5 @@
 import Foundation
+import FirebaseAuth
 
 struct AIResponse: Codable {
     let answer: String
@@ -14,6 +15,15 @@ struct SmartReply: Codable, Hashable {
 final class AIService {
     private let baseURL: URL?
     private let jsonEncoder = JSONEncoder()
+    
+    private func fetchIDToken() async -> String? {
+        guard let user = Auth.auth().currentUser else { return nil }
+        return await withCheckedContinuation { (continuation: CheckedContinuation<String?, Never>) in
+            user.getIDToken { token, _ in
+                continuation.resume(returning: token)
+            }
+        }
+    }
 
     init() {
         if let s = Bundle.main.infoDictionary?["FunctionsBaseURL"] as? String, let url = URL(string: s) {
@@ -31,6 +41,9 @@ final class AIService {
         req.httpMethod = "POST"
         req.timeoutInterval = 12
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = await fetchIDToken(), !token.isEmpty {
+            req.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
         req.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
         let (data, resp) = try await URLSession.shared.data(for: req)
         guard let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {

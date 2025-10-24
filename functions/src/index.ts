@@ -416,6 +416,7 @@ exports.onConversationCreated = onDocumentCreated("conversations/{conversationId
     }
 });
 
-module.exports = { askAI, generateSmartReplies, onMessageCreate: exports.onMessageCreate, onConversationCreated: exports.onConversationCreated };
-
-
+exports.askAI = askAI;
+exports.generateSmartReplies = generateSmartReplies;
+exports.onMessageCreate = exports.onMessageCreate;
+exports.onConversationCreated = exports.onConversationCreated;
