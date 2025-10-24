@@ -461,6 +461,12 @@ final class MessageCell: UICollectionViewCell {
 	private var leadingConstraint: NSLayoutConstraint!
 	private var trailingConstraint: NSLayoutConstraint!
 	private var maxWidthConstraint: NSLayoutConstraint!
+	private var cLabelTop: NSLayoutConstraint!
+	private var cTransTop: NSLayoutConstraint!
+	private var cTransBelowLabel: NSLayoutConstraint!
+	private var cLabelBelowTrans: NSLayoutConstraint!
+	private var cImageTopToTrans: NSLayoutConstraint!
+	private var cImageTopToLabel: NSLayoutConstraint!
     private var trailingPlayConstraint: NSLayoutConstraint!
     private var messageForPlayback: Message?
     private var playbackLang: String = "en"
@@ -506,7 +512,15 @@ final class MessageCell: UICollectionViewCell {
 		trailingConstraint = bubble.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16)
 		maxWidthConstraint = bubble.widthAnchor.constraint(lessThanOrEqualToConstant: 280)
 
-		NSLayoutConstraint.activate([
+        // Prebuild constraints for dynamic ordering
+        cLabelTop = label.topAnchor.constraint(equalTo: bubble.topAnchor, constant: 10)
+        cTransTop = translationLabel.topAnchor.constraint(equalTo: bubble.topAnchor, constant: 10)
+        cTransBelowLabel = translationLabel.topAnchor.constraint(equalTo: label.bottomAnchor, constant: 6)
+        cLabelBelowTrans = label.topAnchor.constraint(equalTo: translationLabel.bottomAnchor, constant: 6)
+        cImageTopToTrans = imageView.topAnchor.constraint(equalTo: translationLabel.bottomAnchor, constant: 6)
+        cImageTopToLabel = imageView.topAnchor.constraint(equalTo: label.bottomAnchor, constant: 6)
+
+        NSLayoutConstraint.activate([
 			avatarView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 8),
 			avatarView.bottomAnchor.constraint(equalTo: bubble.bottomAnchor),
 			avatarView.widthAnchor.constraint(equalToConstant: 28),
@@ -515,13 +529,10 @@ final class MessageCell: UICollectionViewCell {
 			leadingConstraint!, trailingConstraint!, maxWidthConstraint!,
 			bubble.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 4),
 			bubble.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -4),
-            label.topAnchor.constraint(equalTo: bubble.topAnchor, constant: 10),
             label.leadingAnchor.constraint(equalTo: bubble.leadingAnchor, constant: 12),
             label.trailingAnchor.constraint(equalTo: bubble.trailingAnchor, constant: -12),
-            translationLabel.topAnchor.constraint(equalTo: label.bottomAnchor, constant: 6),
 			translationLabel.leadingAnchor.constraint(equalTo: bubble.leadingAnchor, constant: 12),
 			translationLabel.trailingAnchor.constraint(equalTo: bubble.trailingAnchor, constant: -12),
-            imageView.topAnchor.constraint(equalTo: translationLabel.bottomAnchor, constant: 6),
             imageView.leadingAnchor.constraint(equalTo: bubble.leadingAnchor, constant: 12),
             imageView.trailingAnchor.constraint(lessThanOrEqualTo: bubble.trailingAnchor, constant: -12),
             imageView.heightAnchor.constraint(equalToConstant: 160),
@@ -569,6 +580,26 @@ final class MessageCell: UICollectionViewCell {
             case "read": sublabel.text = "✓✓"; sublabel.textColor = Theme.receiptRead
             default: sublabel.text = ""; sublabel.textColor = Theme.incomingMuted
             }
+        }
+
+        // Adjust label order dynamically: outgoing -> translation on top; incoming -> original on top
+        cLabelTop.isActive = false
+        cTransTop.isActive = false
+        cTransBelowLabel.isActive = false
+        cLabelBelowTrans.isActive = false
+        cImageTopToTrans.isActive = false
+        cImageTopToLabel.isActive = false
+
+        if isOutgoing {
+            // translation on top
+            cTransTop.isActive = true
+            cLabelBelowTrans.isActive = true
+            cImageTopToLabel.isActive = true
+        } else {
+            // original on top
+            cLabelTop.isActive = true
+            cTransBelowLabel.isActive = true
+            cImageTopToTrans.isActive = true
         }
 
         // reuse isOutgoing defined above
