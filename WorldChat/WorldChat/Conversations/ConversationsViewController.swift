@@ -74,6 +74,8 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 		listener = messaging.listenConversations(for: uid) { [weak self] items in
 			guard let self = self else { return }
 			self.conversations = items
+			// Prefetch avatars for all participants before/while first render
+			self.prefetchAvatarsForConversations(items)
 			self.tableView.reloadData()
 			self.emptyLabel.isHidden = !items.isEmpty
 			self.attachPresenceListeners()
@@ -99,6 +101,50 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 				}
 			}
 		}
+	}
+
+	// Prefetch avatar URLs and images for all conversations so list shows immediately on first load
+	private func prefetchAvatarsForConversations(_ items: [Conversation]) {
+		let current = Auth.auth().currentUser?.uid ?? ""
+		let uids: [String] = Array(Set(items.flatMap { $0.participants }.filter { $0 != current }))
+		guard !uids.isEmpty else { return }
+		let group = DispatchGroup()
+		for uid in uids {
+			if userIdToAvatarURL[uid] == nil {
+				print("🟦 [ConversationsVC] prefetching avatar for uid=\(uid)")
+				group.enter()
+				FirebaseService.firestore.collection("users").document(uid).getDocument { [weak self] snap, _ in
+					defer { group.leave() }
+					guard let self = self, let data = snap?.data() else { return }
+					let urlStr = (data["photoURL"] as? String) ?? (data["avatarUrl"] as? String)
+					if let urlStr { self.userIdToAvatarURL[uid] = urlStr }
+					if let urlStr, let url = URL(string: urlStr), self.userIdToAvatarImage[uid] == nil {
+						URLSession.shared.dataTask(with: url) { data, _, _ in
+							if let d = data, let image = UIImage(data: d) {
+								DispatchQueue.main.async {
+									self.userIdToAvatarImage[uid] = image
+									self.reloadRowsContaining(uid: uid)
+								}
+							}
+						}.resume()
+					}
+				}
+			}
+		}
+		group.notify(queue: .main) {
+			// Final small refresh after prefetch batch completes
+			self.tableView.reloadData()
+		}
+	}
+
+	private func reloadRowsContaining(uid: String) {
+		guard let visible = tableView.indexPathsForVisibleRows else { return }
+		let current = Auth.auth().currentUser?.uid ?? ""
+		let rowsToReload: [IndexPath] = visible.filter { indexPath in
+			let convo = conversations[indexPath.row]
+			return convo.participants.filter { $0 != current }.contains(uid)
+		}
+		if !rowsToReload.isEmpty { tableView.reloadRows(at: rowsToReload, with: .none) }
 	}
 
 	private func attachPresenceListeners() {
