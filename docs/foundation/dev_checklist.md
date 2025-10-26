@@ -6,6 +6,7 @@ Numbered, dependency-aware checklist derived from PRD and Architecture. Organize
 Supermodules:
 - A — Platform, Identity & Data Services (MVP)
 - B — Messaging & Collaboration (MVP)
+- E — Group Chat Support (MVP+)
 - C — AI Assistant & Smart Replies (Post‑MVP)
 - D — Speech & Learning Analytics (Post‑MVP)
 - X — Cross-Module & Shared
@@ -138,6 +139,57 @@ Description: Conversations, messages, delivery states, read receipts, presence/t
 
 ---
 
+## 3a) Supermodule E — Group Chat Support (MVP+)
+Description: Expand from 1:1 to multi-participant group conversations while preserving real-time sync, translation, and voice playback. Reuse existing view models, message models, and Firestore schema where possible. Add full conversation lifecycle management.
+
+[Build]
+- E.1 Firestore group conversation setup (schema, indexes, helpers)
+  - Dependencies: B.1
+  - Acceptance: `conversations/{id}` supports `type: "group"`, `participants[]`, `participantLanguages{[uid]: langCode}`, and `title`; composite indexes added for list and message queries; helper APIs implemented to create and fetch group conversations; reads/writes scale to ≥10 participants with no hotspots.
+  - Testing: emulator + index verification; load test with 10 users; unit tests for helpers
+- E.2 Frontend handling (Conversation List + ChatVC)
+  - Dependencies: B.2–B.4, A.6
+  - Acceptance: conversations with `type: "group"` render with group title in header and stacked/inline participant avatars; maintain UI parity with 1:1 (bubbles, language ribbons) while accommodating multiple senders; smooth real-time updates and message animations preserved.
+  - Testing: UI/E2E on 2–3 simulators
+- E.3 Message handling (per-recipient translations, receipts)
+  - Dependencies: B.5–B.8
+  - Acceptance: on send, message is translated for every other participant’s language; messages render correctly per sender with proper original/translated ordering; read receipts (`readBy[]`), checkmarks, and timestamps update for all participants within 2s.
+  - Testing: integration across 3 devices; Function logs validate translation fanout
+- E.4 Voice playback support (multi-participant)
+  - Dependencies: D.2, B.4
+  - Acceptance: voice playback works per message regardless of sender language; uses existing 1:1 voice logic with per-message `receiverLang`; play/stop button visibility consistent for sender and receiver cells.
+  - Testing: manual/UI across en/it/fr users
+- E.5 Demo scenario: “European friends”
+  - Dependencies: E.1–E.4
+  - Acceptance: Firestore demo group created titled “European friends” with ≥3 users (English, Italian, French); real-time translation and message sync verified for all; each user sees messages in their own language and can hear translated/original voice playback appropriately.
+  - Testing: scripted E2E with 3 accounts
+- E.6 Conversation lifecycle management (populate, sync, delete, stability)
+  - Dependencies: B.2, B.4–B.6
+  - Acceptance: any conversation where current `uid` ∈ `participants` auto-populates in list with `title`, `lastMessage`, `lastMessageAt`; fix blank new-chat issue (messages subcollection loads in real time); on new send, update `lastMessage` and `lastMessageAt` for all; deletion behavior: 1:1 allows local soft delete (per-user hide), group removes user from `participants` and deletes doc when none remain; listener cleanup implemented; backgrounding/reconnection stable (no duplicates or stale UIs).
+  - Testing: E2E multi-device; foreground/background cycles; memory/leak checks
+- E.7 Profile images in profile and chats
+  - Dependencies: A.7, B.2–B.4
+  - Acceptance: uploaded avatar populates and persists on user profile page; sender avatars render in conversation list and message cells for any conversation they participate in; caching with initials fallback.
+  - Testing: integration/UI; offline avatar cache sanity
+
+[Debug]
+- E.8 High fan-out performance and contention
+  - Dependencies: E.3
+  - Acceptance: p95 send→translated <1.5s for 6–10 participants; no index/throughput errors in logs.
+  - Testing: burst script; emulator/device logs
+- E.9 Listener cleanup and reconnection regression
+  - Dependencies: E.6
+  - Acceptance: after 10 background/foreground cycles and network toggles, no duplicate listeners, blank states, or missed updates.
+  - Testing: simulator cycles; instrumentation logs
+
+[Validate]
+- E.10 Regression map: Group chat scenarios green
+  - Dependencies: E.1–E.9
+  - Acceptance: Gauntlet Week‑2 demo-ready across create → sync → translate → voice → delete; no regressions to 1:1 flows.
+  - Testing: E2E scripted scenarios
+
+---
+
 ## 4) Supermodule C — AI Assistant & Smart Replies (Post‑MVP)
 Description: Dedicated AI assistant (RAG over recent messages) and context-aware bilingual reply suggestions.
 
@@ -260,7 +312,7 @@ Description: TTS playback with word highlighting and basic analytics/experiments
 | B.8 Inline translation Function + cache | Phase B | Integration/E2E | ☐ |
 | B.11 Offline queue & replay | Phase B | E2E | ☐ |
 | B.9 Foreground notifications | Phase B | Device/E2E | ☐ |
-| (Planned) Group chat per-user translations | n/a | Integration/E2E | ☐ |
+| E.3 Group chat per-user translations | Phase E | Integration/E2E | ☐ |
 | C.2 askAI() assistant | Phase C | Integration | ☐ |
 | C.3/C.4 Smart replies pills | Phase C | Integration/UI | ☐ |
 | D.2/D.3 TTS with highlighting | Phase D | UI/Functional | ☐ |

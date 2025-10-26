@@ -5,11 +5,12 @@ import FirebaseDatabase
 import FirebaseStorage
 
 struct Conversation: Hashable {
-	let id: String
-	let participants: [String]
-	let title: String
-	let lastMessage: String?
-	let lastMessageAt: Date?
+    let id: String
+    let participants: [String]
+    let title: String
+    let lastMessage: String?
+    let lastMessageAt: Date?
+    let type: String?
 }
 
 struct Message: Hashable {
@@ -47,18 +48,22 @@ final class MessagingService {
 				onChange([])
 				return
 			}
-			let items: [Conversation] = docs.map { doc in
+			let items: [Conversation] = docs.compactMap { doc in
 				let data = doc.data()
 				let participants = data["participants"] as? [String] ?? []
 				let title = data["title"] as? String ?? "Chat"
+				let type = data["type"] as? String
 				let lastMessage = data["lastMessage"] as? String
 				let ts = data["lastMessageAt"] as? Timestamp
+				let hiddenBy = data["hiddenBy"] as? [String] ?? []
+				if hiddenBy.contains(userId) { return nil }
 				return Conversation(
 					id: doc.documentID,
 					participants: participants,
 					title: title,
 					lastMessage: lastMessage,
-					lastMessageAt: ts?.dateValue()
+					lastMessageAt: ts?.dateValue(),
+					type: type
 				)
 			}
 			onChange(items)
@@ -83,22 +88,78 @@ final class MessagingService {
 			completion(.failure(NSError(domain: "MessagingService", code: 401, userInfo: [NSLocalizedDescriptionKey: "Not authenticated"])));
 			return
 		}
-		let participants = [current, otherUserId].sorted()
-		let data: [String: Any] = [
-			"type": "one-on-one",
-			"participants": participants,
-			"createdAt": FieldValue.serverTimestamp(),
-			"lastMessageAt": FieldValue.serverTimestamp(),
-			"title": "Chat"
-		]
-		var ref: DocumentReference?
-		ref = firestore.collection("conversations").addDocument(data: data) { error in
-			if let error = error {
-				completion(.failure(error)); return
-			}
-			completion(.success(ref!.documentID))
-		}
-	}
+        let participants = [current, otherUserId].sorted()
+        let data: [String: Any] = [
+            "type": "one-on-one",
+            "participants": participants,
+            "createdAt": FieldValue.serverTimestamp(),
+            "lastMessageAt": FieldValue.serverTimestamp(),
+            "title": "Chat"
+        ]
+        var ref: DocumentReference?
+        ref = firestore.collection("conversations").addDocument(data: data) { error in
+            if let error = error {
+                completion(.failure(error)); return
+            }
+            completion(.success(ref!.documentID))
+        }
+    }
+
+    /// Create a multi-participant group conversation
+    /// - Parameters:
+    ///   - title: Group title displayed in headers and conversation list
+    ///   - participantIds: Unique user IDs to include (must include current user)
+    ///   - participantLanguages: Map of uid -> language code (e.g., {"uid": "en"})
+    ///   - completion: Returns new conversationId or error
+    func createGroupConversation(title: String,
+                                 participantIds: [String],
+                                 participantLanguages: [String: String],
+                                 completion: @escaping (Result<String, Error>) -> Void) {
+        guard let current = auth.currentUser?.uid else {
+            completion(.failure(NSError(domain: "MessagingService", code: 401, userInfo: [NSLocalizedDescriptionKey: "Not authenticated"])));
+            return
+        }
+        var unique = Set(participantIds)
+        unique.insert(current)
+        let participants = Array(unique).sorted()
+        let data: [String: Any] = [
+            "type": "group",
+            "participants": participants,
+            "participantLanguages": participantLanguages,
+            "createdAt": FieldValue.serverTimestamp(),
+            "lastMessageAt": FieldValue.serverTimestamp(),
+            "title": title
+        ]
+        var ref: DocumentReference?
+        ref = firestore.collection("conversations").addDocument(data: data) { error in
+            if let error = error { completion(.failure(error)); return }
+            completion(.success(ref!.documentID))
+        }
+    }
+
+    /// Fetch a single conversation document
+    func fetchConversation(conversationId: String, completion: @escaping (Result<Conversation, Error>) -> Void) {
+        firestore.collection("conversations").document(conversationId).getDocument { snap, error in
+            if let error = error { completion(.failure(error)); return }
+            guard let doc = snap, let data = doc.data() else {
+                completion(.failure(NSError(domain: "MessagingService", code: 404, userInfo: [NSLocalizedDescriptionKey: "Conversation not found"])));
+                return
+            }
+            let participants = data["participants"] as? [String] ?? []
+            let title = data["title"] as? String ?? "Chat"
+            let lastMessage = data["lastMessage"] as? String
+            let ts = data["lastMessageAt"] as? Timestamp
+            let convo = Conversation(
+                id: doc.documentID,
+                participants: participants,
+                title: title,
+                lastMessage: lastMessage,
+                lastMessageAt: ts?.dateValue(),
+                type: data["type"] as? String
+            )
+            completion(.success(convo))
+        }
+    }
 
 	// MARK: - Messages
 
@@ -173,6 +234,38 @@ final class MessagingService {
 			return nil
 		}) { _, error in
 			if let error = error { completion(.failure(error)) } else { completion(.success(clientId)) }
+		}
+	}
+
+	/// Delete (1:1 soft hide) or leave (group). If group becomes empty, delete doc.
+	func deleteOrLeave(conversationId: String, completion: @escaping (Result<Void, Error>) -> Void) {
+		guard let current = auth.currentUser?.uid else {
+			completion(.failure(NSError(domain: "MessagingService", code: 401, userInfo: [NSLocalizedDescriptionKey: "Not authenticated"])));
+			return
+		}
+		let ref = firestore.collection("conversations").document(conversationId)
+		ref.getDocument { [weak self] snap, err in
+			if let err = err { completion(.failure(err)); return }
+			guard let self = self, let data = snap?.data() else {
+				completion(.failure(NSError(domain: "MessagingService", code: 404, userInfo: [NSLocalizedDescriptionKey: "Conversation not found"])));
+				return
+			}
+			let type = (data["type"] as? String) ?? "one-on-one"
+			let participants = (data["participants"] as? [String]) ?? []
+			if type == "group" || participants.count > 2 {
+				// Remove user from participants; delete if empty
+				var newParticipants = participants.filter { $0 != current }
+				if newParticipants.isEmpty {
+					ref.delete { e in if let e = e { completion(.failure(e)) } else { completion(.success(())) } }
+				} else {
+					ref.updateData(["participants": newParticipants]) { e in if let e = e { completion(.failure(e)) } else { completion(.success(())) } }
+				}
+			} else {
+				// Soft hide for 1:1
+				ref.setData(["hiddenBy": FieldValue.arrayUnion([current])], merge: true) { e in
+					if let e = e { completion(.failure(e)) } else { completion(.success(())) }
+				}
+			}
 		}
 	}
 

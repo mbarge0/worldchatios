@@ -14,6 +14,7 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 	private var typingHandles: [String: DatabaseHandle] = [:]
 	private var conversationIdToTyping: [String: Bool] = [:]
 	private var userIdToAvatarURL: [String: String] = [:]
+    private var userIdToAvatarImage: [String: UIImage] = [:]
     private var statusHandles: [String: DatabaseHandle] = [:]
 
 	override func viewDidLoad() {
@@ -86,6 +87,13 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 			FirebaseService.firestore.collection("users").document(uid).getDocument { [weak self] snap, _ in
 				guard let self = self, let data = snap?.data() else { return }
 				if let url = data["avatarUrl"] as? String { self.userIdToAvatarURL[uid] = url }
+				if let urlStr = data["avatarUrl"] as? String, let url = URL(string: urlStr) {
+					URLSession.shared.dataTask(with: url) { data, _, _ in
+						if let d = data, let image = UIImage(data: d) {
+							DispatchQueue.main.async { self.userIdToAvatarImage[uid] = image }
+						}
+					}.resume()
+				}
 			}
 		}
 	}
@@ -177,16 +185,55 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 	}
 
 	@objc private func didTapNew() {
-		let alert = UIAlertController(title: "New Conversation", message: "Enter other user's UID for MVP", preferredStyle: .alert)
-		alert.addTextField { $0.placeholder = "other user id" }
-		alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-		alert.addAction(UIAlertAction(title: "Create", style: .default, handler: { [weak self] _ in
-			guard let self = self, let other = alert.textFields?.first?.text, !other.isEmpty else { return }
-			self.messaging.createConversation(with: other) { result in
-				if case let .failure(error) = result { print("🔴 createConversation error: \(error)") }
-			}
+		let sheet = UIAlertController(title: "New Conversation", message: nil, preferredStyle: .actionSheet)
+		sheet.addAction(UIAlertAction(title: "One-on-one", style: .default, handler: { [weak self] _ in
+			guard let self = self else { return }
+			let alert = UIAlertController(title: "One-on-one", message: "Enter other user's UID", preferredStyle: .alert)
+			alert.addTextField { $0.placeholder = "other user id" }
+			alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+			alert.addAction(UIAlertAction(title: "Create", style: .default, handler: { [weak self] _ in
+				guard let self = self, let other = alert.textFields?.first?.text, !other.isEmpty else { return }
+				self.messaging.createConversation(with: other) { result in
+					DispatchQueue.main.async {
+						switch result {
+						case .success(let convoId):
+							self.navigationController?.pushViewController(ChatViewController(conversationId: convoId, otherUserId: other, chatTitle: "Chat"), animated: true)
+
+						case .failure(let error):
+							print("🔴 createConversation error: \(error)")
+						}
+					}
+				}
+			}))
+			self.present(alert, animated: true)
 		}))
-		present(alert, animated: true)
+		sheet.addAction(UIAlertAction(title: "Group (enter comma-separated UIDs)", style: .default, handler: { [weak self] _ in
+			guard let self = self else { return }
+			let alert = UIAlertController(title: "New Group", message: "Enter title and comma-separated participant UIDs", preferredStyle: .alert)
+			alert.addTextField { $0.placeholder = "Title (e.g., European friends)" }
+			alert.addTextField { $0.placeholder = "uids (uid1,uid2,uid3)" }
+			alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+			alert.addAction(UIAlertAction(title: "Create", style: .default, handler: { [weak self] _ in
+				guard let self = self else { return }
+				let title = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines)
+				let raw = alert.textFields?.last?.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+				let ids = raw.split(separator: ",").map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+				guard let t = title, !t.isEmpty, !ids.isEmpty else { return }
+				self.messaging.createGroupConversation(title: t, participantIds: ids, participantLanguages: [:]) { result in
+					DispatchQueue.main.async {
+						switch result {
+						case .success(let convoId):
+							self.navigationController?.pushViewController(ChatViewController(conversationId: convoId, otherUserId: "", chatTitle: t), animated: true)
+						case .failure(let error):
+							print("🔴 createGroupConversation error: \(error)")
+						}
+					}
+				}
+			}))
+			self.present(alert, animated: true)
+		}))
+		sheet.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+		present(sheet, animated: true)
 	}
 
 	@objc private func openMenu() {
@@ -220,9 +267,32 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 		tableView.deselectRow(at: indexPath, animated: true)
 		let convo = conversations[indexPath.row]
 		let current = Auth.auth().currentUser?.uid ?? ""
-		let other = convo.participants.first(where: { $0 != current }) ?? ""
+		let isGroup = (convo.type == "group")
+		let other = isGroup ? "" : (convo.participants.first(where: { $0 != current }) ?? "")
 		navigationController?.pushViewController(ChatViewController(conversationId: convo.id, otherUserId: other, chatTitle: convo.title), animated: true)
 	}
+
+    // Swipe actions: delete (1:1 soft hide) or leave (group)
+    func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
+        let convo = conversations[indexPath.row]
+        let isGroup = (convo.type == "group")
+        let title = isGroup ? "Leave" : "Remove"
+        let action = UIContextualAction(style: .destructive, title: title) { [weak self] _, _, completion in
+            guard let self = self else { completion(false); return }
+            self.messaging.deleteOrLeave(conversationId: convo.id) { result in
+                DispatchQueue.main.async {
+                    switch result {
+                    case .success:
+                        completion(true)
+                    case .failure(let error):
+                        print("🔴 [ConversationsVC] delete/leave failed: \(error)")
+                        completion(false)
+                    }
+                }
+            }
+        }
+        return UISwipeActionsConfiguration(actions: [action])
+    }
 
 	private func configuredCell(for conversation: Conversation, cell: UITableViewCell) -> UITableViewCell {
 		var config = UIListContentConfiguration.subtitleCell()
@@ -237,23 +307,48 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 			config.secondaryTextProperties.color = Theme.textMuted
 		}
 		let current = Auth.auth().currentUser?.uid ?? ""
-		let other = conversation.participants.first(where: { $0 != current }) ?? ""
-		if let urlStr = userIdToAvatarURL[other], let url = URL(string: urlStr) {
-			// Simple async load
-			URLSession.shared.dataTask(with: url) { data, _, _ in
-				if let d = data, let image = UIImage(data: d) {
-					DispatchQueue.main.async {
-						var cfg = config
-						cfg.image = image
-						cfg.imageProperties.cornerRadius = 22
-						cell.contentConfiguration = cfg
+		if let composite = compositeAvatar(for: conversation.participants.filter { $0 != current }) {
+			config.image = composite
+			config.imageProperties.cornerRadius = 22
+		} else {
+			let other = conversation.participants.first(where: { $0 != current }) ?? ""
+			if let urlStr = userIdToAvatarURL[other], let url = URL(string: urlStr) {
+				URLSession.shared.dataTask(with: url) { data, _, _ in
+					if let d = data, let image = UIImage(data: d) {
+						DispatchQueue.main.async {
+							var cfg = config
+							cfg.image = image
+							cfg.imageProperties.cornerRadius = 22
+							cell.contentConfiguration = cfg
+						}
 					}
-				}
-			}.resume()
+				}.resume()
+			}
 		}
 		cell.contentConfiguration = config
 		return cell
 	}
+
+    private func compositeAvatar(for otherParticipantIds: [String]) -> UIImage? {
+        let images: [UIImage] = otherParticipantIds.compactMap { userIdToAvatarImage[$0] }
+        guard !images.isEmpty else { return nil }
+        let size = CGSize(width: 44, height: 44)
+        UIGraphicsBeginImageContextWithOptions(size, false, 0)
+        defer { UIGraphicsEndImageContext() }
+        let context = UIGraphicsGetCurrentContext()
+        context?.clear(CGRect(origin: .zero, size: size))
+        let maxCount = min(3, images.count)
+        let overlap: CGFloat = 10
+        let avatarSize = CGSize(width: 28, height: 28)
+        for i in 0..<maxCount {
+            let img = images[i]
+            let x = CGFloat(i) * (avatarSize.width - overlap)
+            let y = size.height - avatarSize.height
+            img.draw(in: CGRect(x: x, y: y, width: avatarSize.width, height: avatarSize.height))
+        }
+        let composite = UIGraphicsGetImageFromCurrentImageContext()
+        return composite
+    }
 }
 
 
