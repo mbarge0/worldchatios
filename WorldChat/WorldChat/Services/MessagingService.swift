@@ -130,7 +130,9 @@ final class MessagingService {
             group.enter()
             firestore.collection("users").document(uid).getDocument { snap, _ in
                 if let data = snap?.data() {
-                    if let primary = data["primaryLanguage"] as? String, !primary.isEmpty {
+                    if let l = data["language"] as? String, !l.isEmpty {
+                        langMap[uid] = l
+                    } else if let primary = data["primaryLanguage"] as? String, !primary.isEmpty {
                         langMap[uid] = primary
                     } else if let langs = data["languages"] as? [String], let first = langs.first, !first.isEmpty {
                         langMap[uid] = first

@@ -8,6 +8,7 @@ final class ProfileViewController: UIViewController, UIImagePickerControllerDele
 	private let profileService = ProfileService()
 	private let imageProcessor = ImageProcessingService()
 	private var pendingAvatarData: Data?
+    private let languageField = UITextField()
 
 	override func viewDidLoad() {
 		super.viewDidLoad()
@@ -16,6 +17,8 @@ final class ProfileViewController: UIViewController, UIImagePickerControllerDele
 
 		nameField.placeholder = "Display Name"
 		nameField.borderStyle = .roundedRect
+        languageField.placeholder = "Language (e.g., en)"
+        languageField.borderStyle = .roundedRect
 		avatarView.contentMode = .scaleAspectFill
 		avatarView.layer.cornerRadius = 40
 		avatarView.clipsToBounds = true
@@ -25,7 +28,7 @@ final class ProfileViewController: UIViewController, UIImagePickerControllerDele
 		saveButton.setTitle("Save", for: .normal)
 		saveButton.addTarget(self, action: #selector(saveTapped), for: .touchUpInside)
 
-		[nameField, avatarView, saveButton].forEach { view.addSubview($0); $0.translatesAutoresizingMaskIntoConstraints = false }
+        [nameField, languageField, avatarView, saveButton].forEach { view.addSubview($0); $0.translatesAutoresizingMaskIntoConstraints = false }
 
 		NSLayoutConstraint.activate([
 			avatarView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 24),
@@ -35,7 +38,10 @@ final class ProfileViewController: UIViewController, UIImagePickerControllerDele
 			nameField.topAnchor.constraint(equalTo: avatarView.bottomAnchor, constant: 16),
 			nameField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
 			nameField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
-			saveButton.topAnchor.constraint(equalTo: nameField.bottomAnchor, constant: 20),
+            languageField.topAnchor.constraint(equalTo: nameField.bottomAnchor, constant: 12),
+            languageField.leadingAnchor.constraint(equalTo: nameField.leadingAnchor),
+            languageField.trailingAnchor.constraint(equalTo: nameField.trailingAnchor),
+            saveButton.topAnchor.constraint(equalTo: languageField.bottomAnchor, constant: 20),
 			saveButton.centerXAnchor.constraint(equalTo: view.centerXAnchor)
 		])
 
@@ -49,6 +55,7 @@ final class ProfileViewController: UIViewController, UIImagePickerControllerDele
 			guard let profile = fetched else { return }
 			DispatchQueue.main.async {
 				self.nameField.text = profile.displayName
+                self.languageField.text = profile.language
 				if let urlStr = profile.avatarUrl, let url = URL(string: urlStr) {
 					URLSession.shared.dataTask(with: url) { data, _, _ in
 						if let d = data { DispatchQueue.main.async { self.avatarView.image = UIImage(data: d) } }
@@ -82,6 +89,7 @@ final class ProfileViewController: UIViewController, UIImagePickerControllerDele
 	@objc private func saveTapped() {
 		guard let uid = Auth.auth().currentUser?.uid else { return }
 		let name = nameField.text ?? ""
+        let lang = languageField.text ?? ""
 		Task {
 			var avatarUrl: String? = nil
 			if let data = pendingAvatarData {
@@ -91,6 +99,7 @@ final class ProfileViewController: UIViewController, UIImagePickerControllerDele
 			var update: [String: Any] = ["displayName": name]
 			if let avatarUrl { update["avatarUrl"] = avatarUrl }
 			try? await FirebaseService.firestore.collection("users").document(uid).setData(update, merge: true)
+            try? await profileService.updateLanguage(uid: uid, language: lang)
 		}
 	}
 }
