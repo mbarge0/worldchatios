@@ -21,6 +21,7 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 	private var participantLanguages: [String: String] = [:]
     private var loggedVoicePrecheck: Set<String> = []
     private var userIdToAvatarURL: [String: String] = [:]
+    private var userIdToAvatarImage: [String: UIImage] = [:]
     private var participantIds: [String] = []
     private var headerStackView: UIStackView?
 
@@ -485,6 +486,39 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
                         DispatchQueue.main.async { cell?.setAvatarURL(url) }
                     }
                 }
+            } else if !isGroup && !isOutgoing {
+                // 1:1 incoming message: show other participant's avatar
+                let sender = message.senderId
+                if let cached = userIdToAvatarImage[sender] {
+                    cell.setAvatarImage(cached)
+                } else if let urlStr = userIdToAvatarURL[sender] ?? nil, let url = URL(string: urlStr) {
+                    URLSession.shared.dataTask(with: url) { data, _, _ in
+                        if let d = data, let img = UIImage(data: d) {
+                            DispatchQueue.main.async {
+                                self.userIdToAvatarImage[sender] = img
+                                cell.setAvatarImage(img)
+                            }
+                        }
+                    }.resume()
+                } else {
+                    FirebaseService.firestore.collection("users").document(sender).getDocument { [weak self, weak cell] snap, _ in
+                        guard let data = snap?.data() else { return }
+                        let urlStr = (data["photoURL"] as? String) ?? (data["avatarUrl"] as? String)
+                        if let urlStr { self?.userIdToAvatarURL[sender] = urlStr }
+                        if let urlStr, let url = URL(string: urlStr) {
+                            URLSession.shared.dataTask(with: url) { data, _, _ in
+                                if let d = data, let img = UIImage(data: d) {
+                                    DispatchQueue.main.async {
+                                        self?.userIdToAvatarImage[sender] = img
+                                        cell?.setAvatarImage(img)
+                                    }
+                                }
+                            }.resume()
+                        } else {
+                            DispatchQueue.main.async { cell?.setAvatarImage(UIImage(systemName: "person.crop.circle") ?? UIImage()) }
+                        }
+                    }
+                }
             }
             // Debug visibility for voice for sender
             let hasTrans = message.translations?[translationLang]?.isEmpty == false
@@ -557,12 +591,18 @@ private extension ChatViewController {
             if userIdToAvatarURL[uid] == nil {
                 group.enter()
                 FirebaseService.firestore.collection("users").document(uid).getDocument { [weak self] snap, _ in
-                    if let url = snap?.data()? ["avatarUrl"] as? String { self?.userIdToAvatarURL[uid] = url }
+                    if let data = snap?.data() {
+                        let url = (data["photoURL"] as? String) ?? (data["avatarUrl"] as? String)
+                        if let url { self?.userIdToAvatarURL[uid] = url }
+                    }
                     group.leave()
                 }
             }
         }
-        group.notify(queue: .main) { [weak self] in self?.applyHeader(others: others) }
+        group.notify(queue: .main) { [weak self] in
+            print("🟦 [ChatVC] header participant avatar URLs loaded: \(others.map { self?.userIdToAvatarURL[$0] ?? "nil" })")
+            self?.applyHeader(others: others)
+        }
     }
 
     func applyHeader(others: [String]) {
@@ -597,8 +637,12 @@ private extension ChatViewController {
                 URLSession.shared.dataTask(with: url) { data, _, _ in
                     if let d = data, let img = UIImage(data: d) {
                         DispatchQueue.main.async { iv.image = img }
+                    } else {
+                        DispatchQueue.main.async { iv.image = UIImage(systemName: "person.crop.circle") }
                     }
                 }.resume()
+            } else {
+                iv.image = UIImage(systemName: "person.crop.circle")
             }
         }
 
@@ -656,6 +700,7 @@ final class MessageCell: UICollectionViewCell {
 		avatarView.layer.cornerRadius = 14
 		avatarView.clipsToBounds = true
 		avatarView.backgroundColor = .secondarySystemBackground
+		avatarView.contentMode = .scaleAspectFill
 		avatarView.isHidden = true
 
 		contentView.addSubview(bubble)
@@ -881,9 +926,15 @@ final class MessageCell: UICollectionViewCell {
     }
 
 	func setAvatarURL(_ urlString: String?) {
-		guard let s = urlString, let url = URL(string: s) else { avatarView.isHidden = true; return }
+		guard let s = urlString, let url = URL(string: s) else { avatarView.isHidden = false; avatarView.image = UIImage(systemName: "person.crop.circle"); return }
 		URLSession.shared.dataTask(with: url) { data, _, _ in
 			if let d = data, let img = UIImage(data: d) { DispatchQueue.main.async { self.avatarView.image = img; self.avatarView.isHidden = false } }
+			else { DispatchQueue.main.async { self.avatarView.image = UIImage(systemName: "person.crop.circle"); self.avatarView.isHidden = false } }
 		}.resume()
 	}
+
+    func setAvatarImage(_ image: UIImage) {
+        avatarView.image = image
+        avatarView.isHidden = false
+    }
 }

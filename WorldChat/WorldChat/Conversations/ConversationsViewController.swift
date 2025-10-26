@@ -83,13 +83,16 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 	private func fetchAvatarsForParticipants() {
 		let current = Auth.auth().currentUser?.uid ?? ""
 		let participantIds = Set(conversations.flatMap { $0.participants }.filter { $0 != current })
-		participantIds.forEach { uid in
-			FirebaseService.firestore.collection("users").document(uid).getDocument { [weak self] snap, _ in
-				guard let self = self, let data = snap?.data() else { return }
-				if let url = data["avatarUrl"] as? String { self.userIdToAvatarURL[uid] = url }
-				if let urlStr = data["avatarUrl"] as? String, let url = URL(string: urlStr) {
+        participantIds.forEach { uid in
+            FirebaseService.firestore.collection("users").document(uid).getDocument { [weak self] snap, _ in
+                guard let self = self, let data = snap?.data() else { return }
+                let urlStr = (data["photoURL"] as? String) ?? (data["avatarUrl"] as? String)
+                if let urlStr { self.userIdToAvatarURL[uid] = urlStr }
+                print("🟦 [ConversationsVC] fetched photoURL uid=\(uid) url=\(urlStr ?? "nil")")
+                if let urlStr, let url = URL(string: urlStr) {
 					URLSession.shared.dataTask(with: url) { data, _, _ in
 						if let d = data, let image = UIImage(data: d) {
+                            print("🟩 [ConversationsVC] cached avatar uid=\(uid)")
 							DispatchQueue.main.async { self.userIdToAvatarImage[uid] = image }
 						}
 					}.resume()
@@ -295,7 +298,7 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
     }
 
 	private func configuredCell(for conversation: Conversation, cell: UITableViewCell) -> UITableViewCell {
-		var config = UIListContentConfiguration.subtitleCell()
+        var config = UIListContentConfiguration.subtitleCell()
 		config.text = conversation.title
 		config.textProperties.font = .systemFont(ofSize: 17, weight: .semibold)
 		config.textProperties.color = Theme.brandPrimary
@@ -306,23 +309,38 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 			config.secondaryText = text
 			config.secondaryTextProperties.color = Theme.textMuted
 		}
-		let current = Auth.auth().currentUser?.uid ?? ""
-		if let composite = compositeAvatar(for: conversation.participants.filter { $0 != current }) {
-			config.image = composite
-			config.imageProperties.cornerRadius = 22
-		} else {
+        let current = Auth.auth().currentUser?.uid ?? ""
+        if let composite = compositeAvatar(for: conversation.participants.filter { $0 != current }) {
+            config.image = composite
+            config.imageProperties.maximumSize = CGSize(width: 44, height: 44)
+            config.imageProperties.reservedLayoutSize = CGSize(width: 44, height: 44)
+            config.imageProperties.cornerRadius = 22
+        } else {
 			let other = conversation.participants.first(where: { $0 != current }) ?? ""
-			if let urlStr = userIdToAvatarURL[other], let url = URL(string: urlStr) {
+            if let cached = userIdToAvatarImage[other] {
+                config.image = cached
+                config.imageProperties.maximumSize = CGSize(width: 44, height: 44)
+                config.imageProperties.reservedLayoutSize = CGSize(width: 44, height: 44)
+                config.imageProperties.cornerRadius = 22
+            } else if let urlStr = userIdToAvatarURL[other], let url = URL(string: urlStr) {
 				URLSession.shared.dataTask(with: url) { data, _, _ in
 					if let d = data, let image = UIImage(data: d) {
 						DispatchQueue.main.async {
 							var cfg = config
 							cfg.image = image
-							cfg.imageProperties.cornerRadius = 22
+                            cfg.imageProperties.maximumSize = CGSize(width: 44, height: 44)
+                            cfg.imageProperties.reservedLayoutSize = CGSize(width: 44, height: 44)
+                            cfg.imageProperties.cornerRadius = 22
 							cell.contentConfiguration = cfg
+                            self.userIdToAvatarImage[other] = image
 						}
 					}
 				}.resume()
+            } else {
+                config.image = UIImage(systemName: "person.crop.circle")
+                config.imageProperties.maximumSize = CGSize(width: 44, height: 44)
+                config.imageProperties.reservedLayoutSize = CGSize(width: 44, height: 44)
+                config.imageProperties.cornerRadius = 22
 			}
 		}
 		cell.contentConfiguration = config
@@ -332,22 +350,33 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
     private func compositeAvatar(for otherParticipantIds: [String]) -> UIImage? {
         let images: [UIImage] = otherParticipantIds.compactMap { userIdToAvatarImage[$0] }
         guard !images.isEmpty else { return nil }
-        let size = CGSize(width: 44, height: 44)
-        UIGraphicsBeginImageContextWithOptions(size, false, 0)
+        let canvasSize = CGSize(width: 44, height: 44)
+        UIGraphicsBeginImageContextWithOptions(canvasSize, false, 0)
         defer { UIGraphicsEndImageContext() }
-        let context = UIGraphicsGetCurrentContext()
-        context?.clear(CGRect(origin: .zero, size: size))
         let maxCount = min(3, images.count)
         let overlap: CGFloat = 10
-        let avatarSize = CGSize(width: 28, height: 28)
+        let thumb = CGSize(width: 28, height: 28)
         for i in 0..<maxCount {
-            let img = images[i]
-            let x = CGFloat(i) * (avatarSize.width - overlap)
-            let y = size.height - avatarSize.height
-            img.draw(in: CGRect(x: x, y: y, width: avatarSize.width, height: avatarSize.height))
+            let img = circularThumbnail(from: images[i], size: thumb)
+            let x = CGFloat(i) * (thumb.width - overlap)
+            let y = canvasSize.height - thumb.height
+            img.draw(in: CGRect(x: x, y: y, width: thumb.width, height: thumb.height))
         }
-        let composite = UIGraphicsGetImageFromCurrentImageContext()
-        return composite
+        return UIGraphicsGetImageFromCurrentImageContext()
+    }
+
+    private func circularThumbnail(from image: UIImage, size: CGSize) -> UIImage {
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let rect = CGRect(origin: .zero, size: size)
+            UIBezierPath(roundedRect: rect, cornerRadius: min(size.width, size.height)/2).addClip()
+            // Aspect fill
+            let imgSize = image.size
+            let scale = max(size.width / imgSize.width, size.height / imgSize.height)
+            let drawSize = CGSize(width: imgSize.width * scale, height: imgSize.height * scale)
+            let drawOrigin = CGPoint(x: (size.width - drawSize.width)/2, y: (size.height - drawSize.height)/2)
+            image.draw(in: CGRect(origin: drawOrigin, size: drawSize))
+        }
     }
 }
 

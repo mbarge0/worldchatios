@@ -51,17 +51,25 @@ final class ProfileViewController: UIViewController, UIImagePickerControllerDele
 	private func loadProfile() async {
 		guard let uid = Auth.auth().currentUser?.uid else { return }
 		do {
+            print("🟦 [ProfileVC] loadProfile uid=\(uid)")
 			let fetched = try await profileService.fetchProfile(uid: uid)
 			guard let profile = fetched else { return }
-			DispatchQueue.main.async {
-				self.nameField.text = profile.displayName
+            DispatchQueue.main.async {
+                self.nameField.text = profile.displayName
                 self.languageField.text = profile.language
-				if let urlStr = profile.avatarUrl, let url = URL(string: urlStr) {
-					URLSession.shared.dataTask(with: url) { data, _, _ in
-						if let d = data { DispatchQueue.main.async { self.avatarView.image = UIImage(data: d) } }
-					}.resume()
-				}
-			}
+                if let urlStr = profile.avatarUrl, let url = URL(string: urlStr) {
+                    print("🟦 [ProfileVC] loading photo from \(urlStr)")
+                    URLSession.shared.dataTask(with: url) { data, _, _ in
+                        if let d = data, let img = UIImage(data: d) {
+                            DispatchQueue.main.async { self.avatarView.image = img }
+                        } else {
+                            DispatchQueue.main.async { self.avatarView.image = UIImage(systemName: "person.crop.circle.fill") }
+                        }
+                    }.resume()
+                } else {
+                    self.avatarView.image = UIImage(systemName: "person.crop.circle.fill")
+                }
+            }
 		} catch {
 			print("🔴 [ProfileVC] loadProfile error: \(error)")
 		}
@@ -77,10 +85,12 @@ final class ProfileViewController: UIViewController, UIImagePickerControllerDele
 	func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
 		picker.dismiss(animated: true)
 		if let image = info[.originalImage] as? UIImage, let raw = image.jpegData(compressionQuality: 0.9) {
+            print("🟦 [ProfileVC] image selected bytes=\(raw.count)")
 			// Display immediately
 			avatarView.image = image
 			// Process and hold for upload on Save
 			if let processed = try? imageProcessor.processAvatar(raw) {
+                print("🟩 [ProfileVC] image processed bytes=\(processed.count)")
 				pendingAvatarData = processed
 			}
 		}
@@ -90,16 +100,39 @@ final class ProfileViewController: UIViewController, UIImagePickerControllerDele
 		guard let uid = Auth.auth().currentUser?.uid else { return }
 		let name = nameField.text ?? ""
         let lang = languageField.text ?? ""
-		Task {
-			var avatarUrl: String? = nil
-			if let data = pendingAvatarData {
-				avatarUrl = try? await profileService.uploadAvatar(uid: uid, imageData: data)
-			}
-			// Write displayName and avatarUrl to Firestore
-			var update: [String: Any] = ["displayName": name]
-			if let avatarUrl { update["avatarUrl"] = avatarUrl }
-			try? await FirebaseService.firestore.collection("users").document(uid).setData(update, merge: true)
-            try? await profileService.updateLanguage(uid: uid, language: lang)
-		}
+        Task {
+            var avatarUrl: String? = nil
+            if let data = pendingAvatarData {
+                print("🟦 [ProfileVC] uploading avatar…")
+                do {
+                    let url = try await profileService.uploadAvatar(uid: uid, imageData: data)
+                    avatarUrl = url
+                    print("🟩 [ProfileVC] uploaded avatar url=\(url)")
+                } catch {
+                    print("🔴 [ProfileVC] uploadAvatar error: \(error)")
+                }
+            }
+            // Write displayName and photoURL to Firestore
+            var update: [String: Any] = ["displayName": name]
+            if let avatarUrl { update["photoURL"] = avatarUrl; update["avatarUrl"] = avatarUrl }
+            print("🟦 [ProfileVC] updating Firestore name/photo…")
+            do {
+                try await FirebaseService.firestore.collection("users").document(uid).setData(update, merge: true)
+                try await profileService.updateLanguage(uid: uid, language: lang)
+                print("🟩 [ProfileVC] Firestore updated")
+            } catch {
+                print("🔴 [ProfileVC] Firestore update failed: \(error)")
+            }
+            if let avatarUrl, let url = URL(string: avatarUrl) {
+                URLSession.shared.dataTask(with: url) { data, _, _ in
+                    if let d = data, let img = UIImage(data: d) {
+                        DispatchQueue.main.async { self.avatarView.image = img }
+                    } else {
+                        print("🔴 [ProfileVC] failed to reload avatar after save")
+                    }
+                }.resume()
+            }
+            self.pendingAvatarData = nil
+        }
 	}
 }
