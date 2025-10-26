@@ -20,6 +20,10 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 	private var preferredLang: String = "en"
 	private var participantLanguages: [String: String] = [:]
     private var loggedVoicePrecheck: Set<String> = []
+    private var userIdToAvatarURL: [String: String] = [:]
+    private var userIdToAvatarImage: [String: UIImage] = [:]
+    private var participantIds: [String] = []
+    private var headerStackView: UIStackView?
 
 	private lazy var collectionView: UICollectionView = {
 		let layout = UICollectionViewFlowLayout()
@@ -67,25 +71,29 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 		attachMessageAndTypingListeners()
 		sendQueue.start()
 
-		// Load current user's preferred language (first selected language or fallback)
+        // Load current user's preferred language
 		if let uid = FirebaseService.auth.currentUser?.uid {
 			Task { [weak self] in
 				guard let self = self else { return }
-				if let profile = try? await self.profileService.fetchProfile(uid: uid), let first = profile.languages.first, !first.isEmpty {
-					self.preferredLang = first
+                if let profile = try? await self.profileService.fetchProfile(uid: uid) {
+                    self.preferredLang = profile.language
 					DispatchQueue.main.async { self.collectionView.reloadData() }
 				}
 			}
 		}
-		// Listen for conversation participantLanguages
+        // Listen for conversation participantLanguages and participants for header
 		convoListener?.remove()
 		convoListener = FirebaseService.firestore.collection("conversations").document(conversationId).addSnapshotListener { [weak self] snapshot, error in
 			guard let self = self else { return }
-			if let data = snapshot?.data(), let map = data["participantLanguages"] as? [String: String] {
-				self.participantLanguages = map
-				print("🧭 [ChatVC] participantLanguages updated: \(map)")
-				self.collectionView.reloadData()
-			}
+            guard let data = snapshot?.data() else { return }
+            if let map = data["participantLanguages"] as? [String: String] {
+                self.participantLanguages = map
+            }
+            if let parts = data["participants"] as? [String] {
+                self.participantIds = parts
+            }
+            self.updateGroupHeaderIfNeeded()
+            self.collectionView.reloadData()
 		}
 	}
 
@@ -229,12 +237,18 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 			DispatchQueue.main.async {
 				self.smartRepliesStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
 				for s in suggestions {
-					let pill = UIButton(type: .system)
+                    let pill = UIButton(type: .system)
 					pill.setTitle("\(s.translated)", for: .normal)
 					pill.titleLabel?.font = .systemFont(ofSize: 15, weight: .semibold)
 					pill.setTitleColor(Theme.textPrimary, for: .normal)
 					pill.backgroundColor = Theme.brandSecondary.withAlphaComponent(0.4)
-					pill.contentEdgeInsets = UIEdgeInsets(top: 10, left: 12, bottom: 10, right: 12)
+                    if #available(iOS 15.0, *) {
+                        var cfg = pill.configuration ?? .plain()
+                        cfg.contentInsets = NSDirectionalEdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12)
+                        pill.configuration = cfg
+                    } else {
+                        pill.contentEdgeInsets = UIEdgeInsets(top: 10, left: 12, bottom: 10, right: 12)
+                    }
 					pill.layer.cornerRadius = 16
 					pill.isAccessibilityElement = true
 					pill.accessibilityLabel = "Smart reply suggestion: \(s.translated)"
@@ -250,7 +264,7 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 
 	private func attachMessageAndTypingListeners() {
 		listener?.remove()
-		listener = messaging.listenMessages(conversationId: conversationId) { [weak self] msgs in
+        listener = messaging.listenMessages(conversationId: conversationId) { [weak self] msgs in
 			guard let self = self else { return }
 			let countWithTranslations = msgs.filter { ($0.translations?.isEmpty == false) }.count
 			print("🟢 [ChatVC] messages updated: total=\(msgs.count), withTranslations=\(countWithTranslations)")
@@ -261,18 +275,28 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 					let last = IndexPath(item: self.messages.count - 1, section: 0)
 					self.collectionView.scrollToItem(at: last, at: .bottom, animated: true)
 				}
+                // Group read receipts: mark all non-self messages as read for current user
+                if self.otherUserId.isEmpty, let current = FirebaseService.auth.currentUser?.uid {
+                    for m in self.messages where m.senderId != current && !m.readBy.contains(current) {
+                        self.messaging.markRead(conversationId: self.conversationId, messageId: m.id, userId: current)
+                    }
+                }
 			}
 		}
-		// Mark messages from the other user as read when opening/refreshing
-		if let current = FirebaseService.auth.currentUser?.uid {
-			messaging.markAllAsRead(conversationId: conversationId, otherUserId: otherUserId, currentUserId: current)
-		}
-		if let typingHandle = typingHandle {
-			FirebaseService.realtimeDB.reference().removeObserver(withHandle: typingHandle)
-		}
-		typingHandle = messaging.listenTyping(conversationId: conversationId, otherUserId: otherUserId) { [weak self] isTyping in
-			self?.typingLabel.text = isTyping ? "Typing…" : ""
-		}
+        // Mark messages as read for 1:1 only
+        if !otherUserId.isEmpty, let current = FirebaseService.auth.currentUser?.uid {
+            messaging.markAllAsRead(conversationId: conversationId, otherUserId: otherUserId, currentUserId: current)
+        }
+        if let typingHandle = typingHandle {
+            FirebaseService.realtimeDB.reference().removeObserver(withHandle: typingHandle)
+        }
+        if !otherUserId.isEmpty {
+            typingHandle = messaging.listenTyping(conversationId: conversationId, otherUserId: otherUserId) { [weak self] isTyping in
+                self?.typingLabel.text = isTyping ? "Typing…" : ""
+            }
+        } else {
+            typingLabel.text = ""
+        }
 	}
 
 	@objc private func didTapAI() {
@@ -342,9 +366,11 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 		if let presenceHandle = presenceHandle {
 			FirebaseService.realtimeDB.reference().removeObserver(withHandle: presenceHandle)
 		}
-		presenceHandle = messaging.listenPresence(userId: otherUserId) { [weak self] status in
-			self?.presenceDot.backgroundColor = (status == "online") ? .systemGreen : .systemGray
-		}
+    guard !otherUserId.isEmpty else { presenceDot.isHidden = true; return }
+    presenceHandle = messaging.listenPresence(userId: otherUserId) { [weak self] status in
+        self?.presenceDot.isHidden = false
+        self?.presenceDot.backgroundColor = (status == "online") ? .systemGreen : .systemGray
+    }
 	}
 
 	deinit {
@@ -413,21 +439,102 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
             let currentUid = FirebaseService.auth.currentUser?.uid ?? ""
             let isOutgoing = (message.senderId == currentUid)
             let senderLang = participantLanguages[message.senderId] ?? preferredLang
-            let receiverId = isOutgoing ? otherUserId : currentUid
+            let viewerLang = participantLanguages[currentUid] ?? preferredLang
+            let isGroup = otherUserId.isEmpty
+            let receiverId = isOutgoing ? (isGroup ? currentUid : otherUserId) : currentUid
             let receiverLang = participantLanguages[receiverId] ?? preferredLang
-            // translation language for label always receiver's language from viewer perspective
-            let translationLang = receiverLang
-            let topText = isOutgoing ? (message.translations?[receiverLang] ?? "") : message.text
-            let bottomText = isOutgoing ? message.text : (message.translations?[receiverLang] ?? "⟲ translation pending")
-            let showDouble = message.readBy.contains(otherUserId)
+            let translationLang = isGroup ? viewerLang : receiverLang
+            let hasViewerTranslation = (message.translations?[translationLang]?.isEmpty == false)
+            let topText: String = {
+                if isGroup { return hasViewerTranslation ? (message.translations?[translationLang] ?? "") : message.text }
+                return isOutgoing ? (message.translations?[receiverLang] ?? "") : message.text
+            }()
+            let bottomText: String = {
+                if isGroup {
+                    if isOutgoing {
+                        // Show a sample translation preview for sender (first available target translation)
+                        let senderLang = participantLanguages[currentUid] ?? preferredLang
+                        if let t = message.translations?.first(where: { (key, value) in key != senderLang && !value.isEmpty })?.value {
+                            return t
+                        }
+                        return "⟲ translation pending"
+                    } else {
+                        // For receivers in group, bottom is original
+                        return message.text
+                    }
+                }
+                return isOutgoing ? message.text : (message.translations?[receiverLang] ?? "⟲ translation pending")
+            }()
+            let showDouble: Bool = {
+                if !otherUserId.isEmpty {
+                    return message.readBy.contains(otherUserId)
+                } else {
+                    let others = participantLanguages.keys.filter { $0 != currentUid }
+                    guard !others.isEmpty else { return false }
+                    return others.allSatisfy { message.readBy.contains($0) }
+                }
+            }()
+            // Determine speech text and language
+            let viewerLangForSpeech = participantLanguages[currentUid] ?? preferredLang
+            let speechText: String = isGroup
+                ? message.text
+                : (message.translations?[viewerLangForSpeech] ?? message.text)
+            let speechLang: String = isGroup ? senderLang : viewerLangForSpeech
+
             let vm = MessageViewModel(messageId: message.id,
                                       topText: topText.isEmpty ? (isOutgoing ? "⟲ translation pending" : message.text) : topText,
                                       bottomText: bottomText,
-                                      voiceLanguage: isOutgoing ? receiverLang : senderLang,
+                                      voiceLanguage: speechLang,
                                       isOutgoing: isOutgoing,
                                       showDoubleCheck: showDouble,
-                                      profileImageURL: nil)
+                                      profileImageURL: nil,
+                                      isGroup: isGroup,
+                                      speechText: speechText)
             cell.apply(viewModel: vm)
+            if isGroup && !isOutgoing {
+                if let url = userIdToAvatarURL[message.senderId] {
+                    cell.setAvatarURL(url)
+                } else {
+                    FirebaseService.firestore.collection("users").document(message.senderId).getDocument { [weak cell, weak self] snap, _ in
+                        guard let data = snap?.data(), let url = data["avatarUrl"] as? String else { return }
+                        self?.userIdToAvatarURL[message.senderId] = url
+                        DispatchQueue.main.async { cell?.setAvatarURL(url) }
+                    }
+                }
+            } else if !isGroup && !isOutgoing {
+                // 1:1 incoming message: show other participant's avatar
+                let sender = message.senderId
+                if let cached = userIdToAvatarImage[sender] {
+                    cell.setAvatarImage(cached)
+                } else if let urlStr = userIdToAvatarURL[sender] ?? nil, let url = URL(string: urlStr) {
+                    URLSession.shared.dataTask(with: url) { data, _, _ in
+                        if let d = data, let img = UIImage(data: d) {
+                            DispatchQueue.main.async {
+                                self.userIdToAvatarImage[sender] = img
+                                cell.setAvatarImage(img)
+                            }
+                        }
+                    }.resume()
+                } else {
+                    FirebaseService.firestore.collection("users").document(sender).getDocument { [weak self, weak cell] snap, _ in
+                        guard let data = snap?.data() else { return }
+                        let urlStr = (data["photoURL"] as? String) ?? (data["avatarUrl"] as? String)
+                        if let urlStr { self?.userIdToAvatarURL[sender] = urlStr }
+                        if let urlStr, let url = URL(string: urlStr) {
+                            URLSession.shared.dataTask(with: url) { data, _, _ in
+                                if let d = data, let img = UIImage(data: d) {
+                                    DispatchQueue.main.async {
+                                        self?.userIdToAvatarImage[sender] = img
+                                        cell?.setAvatarImage(img)
+                                    }
+                                }
+                            }.resume()
+                        } else {
+                            DispatchQueue.main.async { cell?.setAvatarImage(UIImage(systemName: "person.crop.circle") ?? UIImage()) }
+                        }
+                    }
+                }
+            }
             // Debug visibility for voice for sender
             let hasTrans = message.translations?[translationLang]?.isEmpty == false
             if isOutgoing && !loggedVoicePrecheck.contains(message.id) {
@@ -450,7 +557,9 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
                                       voiceLanguage: senderLang,
                                       isOutgoing: true,
                                       showDoubleCheck: false,
-                                      profileImageURL: nil)
+                                      profileImageURL: nil,
+                                      isGroup: otherUserId.isEmpty,
+                                      speechText: "")
             cell.apply(viewModel: vm)
 		}
 		return cell
@@ -460,19 +569,20 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
         let maxWidth = collectionView.bounds.width * 0.75
-		let message = (indexPath.item < messages.count) ? messages[indexPath.item] : Message(id: "_", senderId: "_", text: " ", timestamp: Date(), status: "sent", translations: nil, readBy: [])
+        let message = (indexPath.item < messages.count) ? messages[indexPath.item] : Message(id: "_", senderId: "_", text: " ", timestamp: Date(), status: "sent", translations: nil, readBy: [])
         let text = (message.text.isEmpty ? " " : message.text) as NSString
         let attributes: [NSAttributedString.Key: Any] = [.font: UIFont.systemFont(ofSize: 17)]
         let bounding = text.boundingRect(with: CGSize(width: maxWidth - 24 - 24, height: CGFloat.greatestFiniteMagnitude),
                                          options: [.usesLineFragmentOrigin, .usesFontLeading],
                                          attributes: attributes,
                                          context: nil)
-		let currentUid = FirebaseService.auth.currentUser?.uid ?? ""
-		let isOutgoing = (message.senderId == currentUid)
-		let usedLang = isOutgoing
-			? (participantLanguages[otherUserId] ?? preferredLang)
-			: (participantLanguages[currentUid] ?? preferredLang)
-		let translation = (message.translations?[usedLang] ?? "") as NSString
+        let currentUid = FirebaseService.auth.currentUser?.uid ?? ""
+        let isOutgoing = (message.senderId == currentUid)
+        let isGroup = otherUserId.isEmpty
+        let usedLang = isGroup
+            ? (participantLanguages[currentUid] ?? preferredLang)
+            : (isOutgoing ? (participantLanguages[otherUserId] ?? preferredLang) : (participantLanguages[currentUid] ?? preferredLang))
+        let translation = (message.translations?[usedLang] ?? (isGroup ? "" : (isOutgoing ? "" : ""))) as NSString
         let translationBounding = translation.boundingRect(with: CGSize(width: maxWidth - 24 - 24, height: CGFloat.greatestFiniteMagnitude),
                                                            options: [.usesLineFragmentOrigin, .usesFontLeading],
                                                            attributes: [.font: UIFont.systemFont(ofSize: 14)],
@@ -480,6 +590,88 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
         let baseHeights: CGFloat = 10 + 6 + 6 + 8
         let height = max(44, ceil(bounding.height) + ceil(translationBounding.height) + baseHeights)
         return CGSize(width: collectionView.bounds.width, height: height.isFinite ? height : 44)
+    }
+}
+
+// MARK: - Group Header (stacked avatars + title)
+private extension ChatViewController {
+    func updateGroupHeaderIfNeeded() {
+        // Only for group chats (no specific otherUserId)
+        guard otherUserId.isEmpty else { return }
+        let current = FirebaseService.auth.currentUser?.uid ?? ""
+        let others = participantIds.filter { $0 != current }
+        guard !others.isEmpty else { return }
+
+        // Fetch avatar URLs if missing
+        let group = DispatchGroup()
+        for uid in others.prefix(3) {
+            if userIdToAvatarURL[uid] == nil {
+                group.enter()
+                FirebaseService.firestore.collection("users").document(uid).getDocument { [weak self] snap, _ in
+                    if let data = snap?.data() {
+                        let url = (data["photoURL"] as? String) ?? (data["avatarUrl"] as? String)
+                        if let url { self?.userIdToAvatarURL[uid] = url }
+                    }
+                    group.leave()
+                }
+            }
+        }
+        group.notify(queue: .main) { [weak self] in
+            print("🟦 [ChatVC] header participant avatar URLs loaded: \(others.map { self?.userIdToAvatarURL[$0] ?? "nil" })")
+            self?.applyHeader(others: others)
+        }
+    }
+
+    func applyHeader(others: [String]) {
+        let titleText = chatTitle ?? "Group"
+        let container = UIStackView()
+        container.axis = .horizontal
+        container.alignment = .center
+        container.spacing = 8
+
+        // Stacked avatars container
+        let avatarsContainer = UIView()
+        avatarsContainer.translatesAutoresizingMaskIntoConstraints = false
+        avatarsContainer.widthAnchor.constraint(equalToConstant: 52).isActive = true
+        avatarsContainer.heightAnchor.constraint(equalToConstant: 24).isActive = true
+
+        let size: CGFloat = 24
+        let overlap: CGFloat = 8
+        let maxCount = min(3, others.count)
+        for i in 0..<maxCount {
+            let iv = UIImageView()
+            iv.contentMode = .scaleAspectFill
+            iv.clipsToBounds = true
+            iv.layer.cornerRadius = size / 2
+            iv.layer.borderWidth = 1
+            iv.layer.borderColor = UIColor.systemBackground.cgColor
+            iv.backgroundColor = .secondarySystemBackground
+            iv.frame = CGRect(x: CGFloat(i) * (size - overlap), y: 0, width: size, height: size)
+            avatarsContainer.addSubview(iv)
+
+            let uid = others[i]
+            if let urlStr = userIdToAvatarURL[uid], let url = URL(string: urlStr) {
+                URLSession.shared.dataTask(with: url) { data, _, _ in
+                    if let d = data, let img = UIImage(data: d) {
+                        DispatchQueue.main.async { iv.image = img }
+                    } else {
+                        DispatchQueue.main.async { iv.image = UIImage(systemName: "person.crop.circle") }
+                    }
+                }.resume()
+            } else {
+                iv.image = UIImage(systemName: "person.crop.circle")
+            }
+        }
+
+        let label = UILabel()
+        label.text = titleText
+        label.font = .systemFont(ofSize: 17, weight: .semibold)
+        label.textColor = Theme.brandPrimary
+
+        container.addArrangedSubview(avatarsContainer)
+        container.addArrangedSubview(label)
+        headerStackView = container
+        navigationItem.titleView = container
     }
 }
 
@@ -492,6 +684,8 @@ struct MessageViewModel {
     let isOutgoing: Bool
     let showDoubleCheck: Bool
     let profileImageURL: String?
+    let isGroup: Bool
+    let speechText: String
 }
 
 final class MessageCell: UICollectionViewCell {
@@ -525,6 +719,7 @@ final class MessageCell: UICollectionViewCell {
 		avatarView.layer.cornerRadius = 14
 		avatarView.clipsToBounds = true
 		avatarView.backgroundColor = .secondarySystemBackground
+		avatarView.contentMode = .scaleAspectFill
 		avatarView.isHidden = true
 
 		contentView.addSubview(bubble)
@@ -736,12 +931,15 @@ final class MessageCell: UICollectionViewCell {
 	}
 
     @objc private func didTapPlay() {
-		guard let vm = currentViewModel else { return }
-		let toSpeak = vm.topText
+        guard let vm = currentViewModel else { return }
+        let toSpeak = vm.speechText
         guard !toSpeak.isEmpty else { return }
         let utterance = AVSpeechUtterance(string: toSpeak)
 		utterance.voice = AVSpeechSynthesisVoice(language: vm.voiceLanguage)
         utterance.rate = AVSpeechUtteranceDefaultSpeechRate
+        if vm.isGroup {
+            print("🟦 [SpeechService] Using original text for group chat playback (lang=\(vm.voiceLanguage))")
+        }
         UIView.animate(withDuration: 0.12, animations: { self.playButton.alpha = 0.4 }) { _ in
             UIView.animate(withDuration: 0.2) { self.playButton.alpha = 0.9 }
         }
@@ -750,9 +948,15 @@ final class MessageCell: UICollectionViewCell {
     }
 
 	func setAvatarURL(_ urlString: String?) {
-		guard let s = urlString, let url = URL(string: s) else { avatarView.isHidden = true; return }
+		guard let s = urlString, let url = URL(string: s) else { avatarView.isHidden = false; avatarView.image = UIImage(systemName: "person.crop.circle"); return }
 		URLSession.shared.dataTask(with: url) { data, _, _ in
 			if let d = data, let img = UIImage(data: d) { DispatchQueue.main.async { self.avatarView.image = img; self.avatarView.isHidden = false } }
+			else { DispatchQueue.main.async { self.avatarView.image = UIImage(systemName: "person.crop.circle"); self.avatarView.isHidden = false } }
 		}.resume()
 	}
+
+    func setAvatarImage(_ image: UIImage) {
+        avatarView.image = image
+        avatarView.isHidden = false
+    }
 }

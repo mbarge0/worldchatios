@@ -51,12 +51,14 @@ final class SessionStore: ObservableObject {
         }
         // Hydrate from cache first
         if let cached = cache.load(uid: uid) {
-            let hydrated = UserProfile(uid: uid, displayName: cached.displayName, languages: cached.languages, avatarUrl: cached.avatarUrl, createdAt: cached.updatedAt)
+            let hydrated = UserProfile(uid: uid, displayName: cached.displayName, languages: cached.languages, avatarUrl: cached.avatarUrl, language: cached.language, createdAt: cached.updatedAt)
             await MainActor.run { self.profile = hydrated }
         }
         // Refresh from Firestore
         do {
             if let remote = try await profileService.fetchProfile(uid: uid) {
+                // Ensure language field exists server-side
+                try? await profileService.updateLanguage(uid: uid, language: remote.language)
                 try? cache.upsert(from: remote)
                 await MainActor.run { self.profile = remote }
             }

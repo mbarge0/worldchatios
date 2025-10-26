@@ -14,6 +14,7 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 	private var typingHandles: [String: DatabaseHandle] = [:]
 	private var conversationIdToTyping: [String: Bool] = [:]
 	private var userIdToAvatarURL: [String: String] = [:]
+    private var userIdToAvatarImage: [String: UIImage] = [:]
     private var statusHandles: [String: DatabaseHandle] = [:]
 
 	override func viewDidLoad() {
@@ -73,6 +74,8 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 		listener = messaging.listenConversations(for: uid) { [weak self] items in
 			guard let self = self else { return }
 			self.conversations = items
+			// Prefetch avatars for all participants before/while first render
+			self.prefetchAvatarsForConversations(items)
 			self.tableView.reloadData()
 			self.emptyLabel.isHidden = !items.isEmpty
 			self.attachPresenceListeners()
@@ -82,12 +85,66 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 	private func fetchAvatarsForParticipants() {
 		let current = Auth.auth().currentUser?.uid ?? ""
 		let participantIds = Set(conversations.flatMap { $0.participants }.filter { $0 != current })
-		participantIds.forEach { uid in
-			FirebaseService.firestore.collection("users").document(uid).getDocument { [weak self] snap, _ in
-				guard let self = self, let data = snap?.data() else { return }
-				if let url = data["avatarUrl"] as? String { self.userIdToAvatarURL[uid] = url }
+        participantIds.forEach { uid in
+            FirebaseService.firestore.collection("users").document(uid).getDocument { [weak self] snap, _ in
+                guard let self = self, let data = snap?.data() else { return }
+                let urlStr = (data["photoURL"] as? String) ?? (data["avatarUrl"] as? String)
+                if let urlStr { self.userIdToAvatarURL[uid] = urlStr }
+                print("🟦 [ConversationsVC] fetched photoURL uid=\(uid) url=\(urlStr ?? "nil")")
+                if let urlStr, let url = URL(string: urlStr) {
+					URLSession.shared.dataTask(with: url) { data, _, _ in
+						if let d = data, let image = UIImage(data: d) {
+                            print("🟩 [ConversationsVC] cached avatar uid=\(uid)")
+							DispatchQueue.main.async { self.userIdToAvatarImage[uid] = image }
+						}
+					}.resume()
+				}
 			}
 		}
+	}
+
+	// Prefetch avatar URLs and images for all conversations so list shows immediately on first load
+	private func prefetchAvatarsForConversations(_ items: [Conversation]) {
+		let current = Auth.auth().currentUser?.uid ?? ""
+		let uids: [String] = Array(Set(items.flatMap { $0.participants }.filter { $0 != current }))
+		guard !uids.isEmpty else { return }
+		let group = DispatchGroup()
+		for uid in uids {
+			if userIdToAvatarURL[uid] == nil {
+				print("🟦 [ConversationsVC] prefetching avatar for uid=\(uid)")
+				group.enter()
+				FirebaseService.firestore.collection("users").document(uid).getDocument { [weak self] snap, _ in
+					defer { group.leave() }
+					guard let self = self, let data = snap?.data() else { return }
+					let urlStr = (data["photoURL"] as? String) ?? (data["avatarUrl"] as? String)
+					if let urlStr { self.userIdToAvatarURL[uid] = urlStr }
+					if let urlStr, let url = URL(string: urlStr), self.userIdToAvatarImage[uid] == nil {
+						URLSession.shared.dataTask(with: url) { data, _, _ in
+							if let d = data, let image = UIImage(data: d) {
+								DispatchQueue.main.async {
+									self.userIdToAvatarImage[uid] = image
+									self.reloadRowsContaining(uid: uid)
+								}
+							}
+						}.resume()
+					}
+				}
+			}
+		}
+		group.notify(queue: .main) {
+			// Final small refresh after prefetch batch completes
+			self.tableView.reloadData()
+		}
+	}
+
+	private func reloadRowsContaining(uid: String) {
+		guard let visible = tableView.indexPathsForVisibleRows else { return }
+		let current = Auth.auth().currentUser?.uid ?? ""
+		let rowsToReload: [IndexPath] = visible.filter { indexPath in
+			let convo = conversations[indexPath.row]
+			return convo.participants.filter { $0 != current }.contains(uid)
+		}
+		if !rowsToReload.isEmpty { tableView.reloadRows(at: rowsToReload, with: .none) }
 	}
 
 	private func attachPresenceListeners() {
@@ -177,16 +234,55 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 	}
 
 	@objc private func didTapNew() {
-		let alert = UIAlertController(title: "New Conversation", message: "Enter other user's UID for MVP", preferredStyle: .alert)
-		alert.addTextField { $0.placeholder = "other user id" }
-		alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-		alert.addAction(UIAlertAction(title: "Create", style: .default, handler: { [weak self] _ in
-			guard let self = self, let other = alert.textFields?.first?.text, !other.isEmpty else { return }
-			self.messaging.createConversation(with: other) { result in
-				if case let .failure(error) = result { print("🔴 createConversation error: \(error)") }
-			}
+		let sheet = UIAlertController(title: "New Conversation", message: nil, preferredStyle: .actionSheet)
+		sheet.addAction(UIAlertAction(title: "One-on-one", style: .default, handler: { [weak self] _ in
+			guard let self = self else { return }
+			let alert = UIAlertController(title: "One-on-one", message: "Enter other user's UID", preferredStyle: .alert)
+			alert.addTextField { $0.placeholder = "other user id" }
+			alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+			alert.addAction(UIAlertAction(title: "Create", style: .default, handler: { [weak self] _ in
+				guard let self = self, let other = alert.textFields?.first?.text, !other.isEmpty else { return }
+				self.messaging.createConversation(with: other) { result in
+					DispatchQueue.main.async {
+						switch result {
+						case .success(let convoId):
+							self.navigationController?.pushViewController(ChatViewController(conversationId: convoId, otherUserId: other, chatTitle: "Chat"), animated: true)
+
+						case .failure(let error):
+							print("🔴 createConversation error: \(error)")
+						}
+					}
+				}
+			}))
+			self.present(alert, animated: true)
 		}))
-		present(alert, animated: true)
+		sheet.addAction(UIAlertAction(title: "Group (enter comma-separated UIDs)", style: .default, handler: { [weak self] _ in
+			guard let self = self else { return }
+			let alert = UIAlertController(title: "New Group", message: "Enter title and comma-separated participant UIDs", preferredStyle: .alert)
+			alert.addTextField { $0.placeholder = "Title (e.g., European friends)" }
+			alert.addTextField { $0.placeholder = "uids (uid1,uid2,uid3)" }
+			alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+			alert.addAction(UIAlertAction(title: "Create", style: .default, handler: { [weak self] _ in
+				guard let self = self else { return }
+				let title = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines)
+				let raw = alert.textFields?.last?.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+				let ids = raw.split(separator: ",").map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+				guard let t = title, !t.isEmpty, !ids.isEmpty else { return }
+				self.messaging.createGroupConversation(title: t, participantIds: ids, participantLanguages: [:]) { result in
+					DispatchQueue.main.async {
+						switch result {
+						case .success(let convoId):
+							self.navigationController?.pushViewController(ChatViewController(conversationId: convoId, otherUserId: "", chatTitle: t), animated: true)
+						case .failure(let error):
+							print("🔴 createGroupConversation error: \(error)")
+						}
+					}
+				}
+			}))
+			self.present(alert, animated: true)
+		}))
+		sheet.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+		present(sheet, animated: true)
 	}
 
 	@objc private func openMenu() {
@@ -220,15 +316,42 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 		tableView.deselectRow(at: indexPath, animated: true)
 		let convo = conversations[indexPath.row]
 		let current = Auth.auth().currentUser?.uid ?? ""
-		let other = convo.participants.first(where: { $0 != current }) ?? ""
+		let isGroup = (convo.type == "group")
+		let other = isGroup ? "" : (convo.participants.first(where: { $0 != current }) ?? "")
 		navigationController?.pushViewController(ChatViewController(conversationId: convo.id, otherUserId: other, chatTitle: convo.title), animated: true)
 	}
+
+    // Swipe actions: delete (1:1 soft hide) or leave (group)
+    func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
+        let convo = conversations[indexPath.row]
+        let isGroup = (convo.type == "group")
+        let title = isGroup ? "Leave" : "Remove"
+        let action = UIContextualAction(style: .destructive, title: title) { [weak self] _, _, completion in
+            guard let self = self else { completion(false); return }
+            self.messaging.deleteOrLeave(conversationId: convo.id) { result in
+                DispatchQueue.main.async {
+                    switch result {
+                    case .success:
+                        completion(true)
+                    case .failure(let error):
+                        print("🔴 [ConversationsVC] delete/leave failed: \(error)")
+                        completion(false)
+                    }
+                }
+            }
+        }
+        return UISwipeActionsConfiguration(actions: [action])
+    }
 
 	private func configuredCell(for conversation: Conversation, cell: UITableViewCell) -> UITableViewCell {
 		var config = UIListContentConfiguration.subtitleCell()
 		config.text = conversation.title
 		config.textProperties.font = .systemFont(ofSize: 17, weight: .semibold)
 		config.textProperties.color = Theme.brandPrimary
+		// Pre-apply image sizing to avoid first-load stretch
+		config.imageProperties.maximumSize = CGSize(width: 44, height: 44)
+		config.imageProperties.reservedLayoutSize = CGSize(width: 44, height: 44)
+		config.imageProperties.cornerRadius = 22
 		if conversationIdToTyping[conversation.id] == true {
 			config.secondaryText = "Typing…"
 			config.secondaryTextProperties.color = Theme.textMuted
@@ -236,24 +359,71 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 			config.secondaryText = text
 			config.secondaryTextProperties.color = Theme.textMuted
 		}
-		let current = Auth.auth().currentUser?.uid ?? ""
-		let other = conversation.participants.first(where: { $0 != current }) ?? ""
-		if let urlStr = userIdToAvatarURL[other], let url = URL(string: urlStr) {
-			// Simple async load
-			URLSession.shared.dataTask(with: url) { data, _, _ in
-				if let d = data, let image = UIImage(data: d) {
-					DispatchQueue.main.async {
-						var cfg = config
-						cfg.image = image
-						cfg.imageProperties.cornerRadius = 22
-						cell.contentConfiguration = cfg
+        let current = Auth.auth().currentUser?.uid ?? ""
+		if let composite = compositeAvatar(for: conversation.participants.filter { $0 != current }) {
+			config.image = composite
+		} else {
+			let other = conversation.participants.first(where: { $0 != current }) ?? ""
+			if let cached = userIdToAvatarImage[other] {
+				// Use a circular 44x44 thumbnail to ensure consistent look
+				config.image = circularThumbnail(from: cached, size: CGSize(width: 44, height: 44))
+            } else if let urlStr = userIdToAvatarURL[other], let url = URL(string: urlStr) {
+				URLSession.shared.dataTask(with: url) { data, _, _ in
+					if let d = data, let image = UIImage(data: d) {
+						DispatchQueue.main.async {
+							var cfg = UIListContentConfiguration.subtitleCell()
+							cfg.text = config.text
+							cfg.textProperties = config.textProperties
+							cfg.secondaryText = config.secondaryText
+							cfg.secondaryTextProperties = config.secondaryTextProperties
+							cfg.image = self.circularThumbnail(from: image, size: CGSize(width: 44, height: 44))
+							cfg.imageProperties.maximumSize = CGSize(width: 44, height: 44)
+							cfg.imageProperties.reservedLayoutSize = CGSize(width: 44, height: 44)
+							cfg.imageProperties.cornerRadius = 22
+							cell.contentConfiguration = cfg
+                            self.userIdToAvatarImage[other] = image
+						}
 					}
-				}
-			}.resume()
+				}.resume()
+            } else {
+                config.image = UIImage(systemName: "person.crop.circle")
+			}
 		}
 		cell.contentConfiguration = config
 		return cell
 	}
+
+    private func compositeAvatar(for otherParticipantIds: [String]) -> UIImage? {
+        let images: [UIImage] = otherParticipantIds.compactMap { userIdToAvatarImage[$0] }
+        guard !images.isEmpty else { return nil }
+        let canvasSize = CGSize(width: 44, height: 44)
+        UIGraphicsBeginImageContextWithOptions(canvasSize, false, 0)
+        defer { UIGraphicsEndImageContext() }
+        let maxCount = min(3, images.count)
+        let overlap: CGFloat = 10
+        let thumb = CGSize(width: 28, height: 28)
+        for i in 0..<maxCount {
+            let img = circularThumbnail(from: images[i], size: thumb)
+            let x = CGFloat(i) * (thumb.width - overlap)
+            let y = canvasSize.height - thumb.height
+            img.draw(in: CGRect(x: x, y: y, width: thumb.width, height: thumb.height))
+        }
+        return UIGraphicsGetImageFromCurrentImageContext()
+    }
+
+    private func circularThumbnail(from image: UIImage, size: CGSize) -> UIImage {
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let rect = CGRect(origin: .zero, size: size)
+            UIBezierPath(roundedRect: rect, cornerRadius: min(size.width, size.height)/2).addClip()
+            // Aspect fill
+            let imgSize = image.size
+            let scale = max(size.width / imgSize.width, size.height / imgSize.height)
+            let drawSize = CGSize(width: imgSize.width * scale, height: imgSize.height * scale)
+            let drawOrigin = CGPoint(x: (size.width - drawSize.width)/2, y: (size.height - drawSize.height)/2)
+            image.draw(in: CGRect(origin: drawOrigin, size: drawSize))
+        }
+    }
 }
 
 

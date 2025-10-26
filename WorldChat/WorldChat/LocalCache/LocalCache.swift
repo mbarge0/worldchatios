@@ -7,13 +7,15 @@ final class UserEntity {
 	var displayName: String
 	var languages: [String]
 	var avatarUrl: String?
+	var language: String
 	var updatedAt: Date
 
-	init(uid: String, displayName: String, languages: [String], avatarUrl: String?, updatedAt: Date) {
+	init(uid: String, displayName: String, languages: [String], avatarUrl: String?, language: String, updatedAt: Date) {
 		self.uid = uid
 		self.displayName = displayName
 		self.languages = languages
 		self.avatarUrl = avatarUrl
+		self.language = language
 		self.updatedAt = updatedAt
 	}
 }
@@ -67,9 +69,10 @@ final class LocalCacheService {
 			existing.displayName = profile.displayName
 			existing.languages = profile.languages
 			existing.avatarUrl = profile.avatarUrl
+			existing.language = profile.language
 			existing.updatedAt = Date()
 		} else {
-			let entity = UserEntity(uid: profile.uid, displayName: profile.displayName, languages: profile.languages, avatarUrl: profile.avatarUrl, updatedAt: Date())
+			let entity = UserEntity(uid: profile.uid, displayName: profile.displayName, languages: profile.languages, avatarUrl: profile.avatarUrl, language: profile.language, updatedAt: Date())
 			context.insert(entity)
 		}
 		try? context.save()
