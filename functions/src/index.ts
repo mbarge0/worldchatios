@@ -290,7 +290,39 @@ const generateSmartReplies = functions.https.onRequest(async (req: Request, res:
     }
 });
 
-// Translate newly created messages to the receiver's language (v2 trigger)
+// Simple translation cache: avoid translating same text/lang repeatedly
+async function translateWithCache(fromLang: string, toLang: string, text: string): Promise<string> {
+    const key = crypto.createHash("sha1").update(`${fromLang.toLowerCase()}|${toLang.toLowerCase()}|${text.trim()}`)
+        .digest("hex");
+    const ref = db.collection("translate_cache").doc(key);
+    const snap = await ref.get();
+    if (snap.exists) {
+        const cached = (snap.data() as any)?.translated || "";
+        if (cached) { return cached; }
+    }
+    const system = `You are a translation engine. Translate faithfully and naturally from ${fromLang} to ${toLang}. Return only the translated sentence, with no quotes or extra commentary.`;
+    const userPrompt = `Source (${fromLang}): ${text}\nTarget (${toLang}):`;
+    const start = Date.now();
+    const completion = await openai.chat.completions.create({
+        model: OPENAI_MODEL,
+        messages: [
+            { role: "system", content: system },
+            { role: "user", content: userPrompt },
+        ],
+        temperature: 0.2,
+        max_tokens: Math.min(400, Math.max(60, text.length + 20)),
+    });
+    const latencyMs = Date.now() - start;
+    const translatedRaw = completion.choices?.[0]?.message?.content || "";
+    const translated = translatedRaw
+        .replace(/^```[\s\S]*?```$/g, "")
+        .replace(/```[a-z]*\n?|```/gi, "")
+        .trim();
+    await ref.set({ translated, createdAt: FieldValue.serverTimestamp(), fromLang, toLang, len: text.length, latencyMs }, { merge: true });
+    return translated;
+}
+
+// Translate newly created messages for groups and 1:1 (v2 trigger)
 exports.onMessageCreate = onDocumentCreated("conversations/{conversationId}/messages/{messageId}", async (event: any) => {
     const { conversationId, messageId } = event.params || {};
     try {
@@ -309,6 +341,7 @@ exports.onMessageCreate = onDocumentCreated("conversations/{conversationId}/mess
         if (!convoSnap.exists) { console.log("onMessageCreate: Conversation not found", { conversationId }); return; }
         const convo = convoSnap.data() as any;
         const participants: string[] = Array.isArray(convo?.participants) ? convo.participants : [];
+        const convoType: string = (convo?.type || "one-on-one") as string;
         const senderId: string = data.senderId;
         // Populate missing participantLanguages for any participants
         const existingMap = (convo?.participantLanguages || {}) as Record<string, string>;
@@ -352,32 +385,18 @@ exports.onMessageCreate = onDocumentCreated("conversations/{conversationId}/mess
         if (toTranslate.length === 0) { console.log("onMessageCreate: All translations already present"); return; }
 
         const newTranslations: Record<string, string> = {};
-        for (const toLang of toTranslate) {
-            console.log("onMessageCreate: Translating", { conversationId, messageId, from: senderLang, to: toLang });
-            const system = `You are a translation engine. Translate faithfully and naturally from ${senderLang} to ${toLang}. Return only the translated sentence, with no quotes or extra commentary.`;
-            const userPrompt = `Source (${senderLang}): ${text}\nTarget (${toLang}):`;
-            const start = Date.now();
-            const completion = await openai.chat.completions.create({
-                model: OPENAI_MODEL,
-                messages: [
-                    { role: "system", content: system },
-                    { role: "user", content: userPrompt },
-                ],
-                temperature: 0.2,
-                max_tokens: Math.min(400, Math.max(60, text.length + 20)),
-            });
-            const latencyMs = Date.now() - start;
-            const translatedRaw = completion.choices?.[0]?.message?.content || "";
-            const translated = translatedRaw
-                .replace(/^```[\s\S]*?```$/g, "")
-                .replace(/```[a-z]*\n?|```/gi, "")
-                .trim();
-            if (translated) {
-                newTranslations[toLang] = translated;
-                console.log("onMessageCreate: Translation saved pending write", { targetLang: toLang, latencyMs });
-            } else {
-                console.warn("onMessageCreate: Empty translation", { targetLang: toLang });
+        console.log("onMessageCreate: Fanout", { type: convoType, conversationId, messageId, senderId, toLangs: Array.from(toTranslate) });
+        const results = await Promise.all(toTranslate.map(async (toLang) => {
+            try {
+                const translated = await translateWithCache(senderLang, toLang, text);
+                return { toLang, translated };
+            } catch (e) {
+                console.warn("onMessageCreate: translate failed", { toLang, error: (e as any)?.message || e });
+                return { toLang, translated: "" };
             }
+        }));
+        for (const r of results) {
+            if (r.translated) newTranslations[r.toLang] = r.translated;
         }
 
         if (Object.keys(newTranslations).length > 0) {
@@ -394,31 +413,27 @@ exports.onMessageCreate = onDocumentCreated("conversations/{conversationId}/mess
     }
 });
 
-// When a conversation is created, populate participantLanguages from users
+// When a conversation is created, populate participantLanguages from users (1:1 and group)
 exports.onConversationCreated = onDocumentCreated("conversations/{conversationId}", async (event: any) => {
     const { conversationId } = event.params || {};
     try {
         const snap = event.data;
         const data = snap ? (snap.data ? snap.data() : {}) : {};
         const participants: string[] = Array.isArray(data?.participants) ? data.participants : [];
-        if (participants.length !== 2) { return; }
+        if (participants.length < 2) { return; }
         const convoRef = db.collection("conversations").doc(conversationId);
         const convoSnap = await convoRef.get();
         const current = (convoSnap.data() as any) || {};
         const existingMap = (current.participantLanguages || {}) as Record<string, string>;
-        const [a, b] = participants;
         const toFill: Record<string, string> = {};
-        if (!existingMap[a]) {
-            const aSnap = await db.collection("users").doc(a).get();
-            toFill[a] = (aSnap.data() as any)?.primaryLanguage || (aSnap.data() as any)?.language || "en";
-        }
-        if (!existingMap[b]) {
-            const bSnap = await db.collection("users").doc(b).get();
-            toFill[b] = (bSnap.data() as any)?.primaryLanguage || (bSnap.data() as any)?.language || "en";
+        for (const uid of participants) {
+            if (existingMap[uid]) continue;
+            const uSnap = await db.collection("users").doc(uid).get();
+            toFill[uid] = (uSnap.data() as any)?.primaryLanguage || (uSnap.data() as any)?.language || "en";
         }
         if (Object.keys(toFill).length > 0) {
             await convoRef.set({ participantLanguages: { ...existingMap, ...toFill } }, { merge: true });
-            console.log("onConversationCreated: participantLanguages populated", { conversationId });
+            console.log("onConversationCreated: participantLanguages populated", { conversationId, toFill, participants });
         }
     } catch (err) {
         console.error("onConversationCreated: Failed to set participantLanguages", { conversationId, error: (err as any)?.message || err });

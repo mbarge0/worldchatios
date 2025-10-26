@@ -70,12 +70,12 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 		attachMessageAndTypingListeners()
 		sendQueue.start()
 
-		// Load current user's preferred language (first selected language or fallback)
+        // Load current user's preferred language
 		if let uid = FirebaseService.auth.currentUser?.uid {
 			Task { [weak self] in
 				guard let self = self else { return }
-				if let profile = try? await self.profileService.fetchProfile(uid: uid), let first = profile.languages.first, !first.isEmpty {
-					self.preferredLang = first
+                if let profile = try? await self.profileService.fetchProfile(uid: uid) {
+                    self.preferredLang = profile.language
 					DispatchQueue.main.async { self.collectionView.reloadData() }
 				}
 			}
@@ -443,7 +443,19 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
                 return isOutgoing ? (message.translations?[receiverLang] ?? "") : message.text
             }()
             let bottomText: String = {
-                if isGroup { return hasViewerTranslation ? message.text : "⟲ translation pending" }
+                if isGroup {
+                    if isOutgoing {
+                        // Show a sample translation preview for sender (first available target translation)
+                        let senderLang = participantLanguages[currentUid] ?? preferredLang
+                        if let t = message.translations?.first(where: { (key, value) in key != senderLang && !value.isEmpty })?.value {
+                            return t
+                        }
+                        return "⟲ translation pending"
+                    } else {
+                        // For receivers in group, bottom is original
+                        return message.text
+                    }
+                }
                 return isOutgoing ? message.text : (message.translations?[receiverLang] ?? "⟲ translation pending")
             }()
             let showDouble: Bool = {

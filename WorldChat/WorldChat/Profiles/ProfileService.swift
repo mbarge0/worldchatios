@@ -7,6 +7,7 @@ struct UserProfile: Codable {
 	let displayName: String
 	let languages: [String]
 	let avatarUrl: String?
+    let language: String
 	let createdAt: Date
 }
 
@@ -24,6 +25,7 @@ final class ProfileService {
 			"displayName": displayName,
 			"languages": languages,
 			"avatarUrl": NSNull(),
+            "language": (languages.first ?? "en"),
 			"createdAt": FieldValue.serverTimestamp()
 		]
 		try await firestore.collection("users").document(uid).setData(data, merge: true)
@@ -35,7 +37,8 @@ final class ProfileService {
 		let displayName = data["displayName"] as? String ?? ""
 		let languages = data["languages"] as? [String] ?? []
 		let avatarUrl = data["avatarUrl"] as? String
-		return UserProfile(uid: uid, displayName: displayName, languages: languages, avatarUrl: avatarUrl, createdAt: Date())
+        let language = (data["language"] as? String) ?? languages.first ?? "en"
+        return UserProfile(uid: uid, displayName: displayName, languages: languages, avatarUrl: avatarUrl, language: language, createdAt: Date())
 	}
 
 	func uploadAvatar(uid: String, imageData: Data) async throws -> String {
@@ -45,6 +48,12 @@ final class ProfileService {
 		try await firestore.collection("users").document(uid).setData(["avatarUrl": url.absoluteString], merge: true)
 		return url.absoluteString
 	}
+
+    func updateLanguage(uid: String, language: String) async throws {
+        let lang = language.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let code = lang.isEmpty ? "en" : lang
+        try await firestore.collection("users").document(uid).setData(["language": code], merge: true)
+    }
 }
 
 

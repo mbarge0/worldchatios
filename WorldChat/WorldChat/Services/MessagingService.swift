@@ -122,18 +122,41 @@ final class MessagingService {
         var unique = Set(participantIds)
         unique.insert(current)
         let participants = Array(unique).sorted()
-        let data: [String: Any] = [
-            "type": "group",
-            "participants": participants,
-            "participantLanguages": participantLanguages,
-            "createdAt": FieldValue.serverTimestamp(),
-            "lastMessageAt": FieldValue.serverTimestamp(),
-            "title": title
-        ]
-        var ref: DocumentReference?
-        ref = firestore.collection("conversations").addDocument(data: data) { error in
-            if let error = error { completion(.failure(error)); return }
-            completion(.success(ref!.documentID))
+
+        // Build participantLanguages map from provided input or fetch from users/{uid}
+        var langMap: [String: String] = participantLanguages
+        let group = DispatchGroup()
+        for uid in participants where langMap[uid] == nil {
+            group.enter()
+            firestore.collection("users").document(uid).getDocument { snap, _ in
+                if let data = snap?.data() {
+                    if let primary = data["primaryLanguage"] as? String, !primary.isEmpty {
+                        langMap[uid] = primary
+                    } else if let langs = data["languages"] as? [String], let first = langs.first, !first.isEmpty {
+                        langMap[uid] = first
+                    }
+                }
+                if langMap[uid] == nil { langMap[uid] = "en" }
+                group.leave()
+            }
+        }
+
+        group.notify(queue: .main) {
+            var data: [String: Any] = [
+                "type": "group",
+                "title": title,
+                "participants": participants,
+                "participantLanguages": langMap,
+                "createdAt": FieldValue.serverTimestamp(),
+                "lastMessage": "",
+                "lastMessageAt": FieldValue.serverTimestamp()
+            ]
+            print("🟩 [MessagingService] createGroupConversation title=\(title) participants=\(participants) participantLanguages=\(langMap)")
+            var ref: DocumentReference?
+            ref = self.firestore.collection("conversations").addDocument(data: data) { error in
+                if let error = error { completion(.failure(error)); return }
+                completion(.success(ref!.documentID))
+            }
         }
     }
 

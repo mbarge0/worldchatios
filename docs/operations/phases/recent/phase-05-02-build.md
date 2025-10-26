@@ -140,6 +140,16 @@ Date: 2025-10-26
 - Done when: E.1–E.7 acceptance pass; E.8–E.10 performance targets met; A/B regression checks green.
 - Evidence: emulator logs, device screenshots, and run notes attached to this phase.
 
+### Logs & Data to Verify
+- Group creation (client): look for
+  - "🟩 [MessagingService] createGroupConversation … participantLanguages={…}"
+  - Firestore doc at `conversations/{id}` contains:
+    - `type: "group"`, `title`, `participants[]`, `participantLanguages{uid: lang}`, `createdAt`, `lastMessage`, `lastMessageAt`
+- Fanout (server): Cloud Functions logs should include
+  - `onMessageCreate: Fanout { type, conversationId, messageId, senderId, toLangs: [...] }`
+  - Cache misses/hits via translate_cache writes and timing fields
+- Message docs: `conversations/{id}/messages/{mid}` should contain `translations{lang: text}` for all targets (all participants except sender)
+
 ### Next Steps
 - Address UI review issues; re‑run avatar caching under throttled network.
 - Prepare reflection and checkpoint commit for Phase 05 completion.
