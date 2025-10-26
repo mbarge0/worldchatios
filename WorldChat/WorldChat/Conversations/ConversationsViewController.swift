@@ -298,10 +298,14 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
     }
 
 	private func configuredCell(for conversation: Conversation, cell: UITableViewCell) -> UITableViewCell {
-        var config = UIListContentConfiguration.subtitleCell()
+		var config = UIListContentConfiguration.subtitleCell()
 		config.text = conversation.title
 		config.textProperties.font = .systemFont(ofSize: 17, weight: .semibold)
 		config.textProperties.color = Theme.brandPrimary
+		// Pre-apply image sizing to avoid first-load stretch
+		config.imageProperties.maximumSize = CGSize(width: 44, height: 44)
+		config.imageProperties.reservedLayoutSize = CGSize(width: 44, height: 44)
+		config.imageProperties.cornerRadius = 22
 		if conversationIdToTyping[conversation.id] == true {
 			config.secondaryText = "Typing…"
 			config.secondaryTextProperties.color = Theme.textMuted
@@ -310,27 +314,26 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 			config.secondaryTextProperties.color = Theme.textMuted
 		}
         let current = Auth.auth().currentUser?.uid ?? ""
-        if let composite = compositeAvatar(for: conversation.participants.filter { $0 != current }) {
-            config.image = composite
-            config.imageProperties.maximumSize = CGSize(width: 44, height: 44)
-            config.imageProperties.reservedLayoutSize = CGSize(width: 44, height: 44)
-            config.imageProperties.cornerRadius = 22
-        } else {
+		if let composite = compositeAvatar(for: conversation.participants.filter { $0 != current }) {
+			config.image = composite
+		} else {
 			let other = conversation.participants.first(where: { $0 != current }) ?? ""
-            if let cached = userIdToAvatarImage[other] {
-                config.image = cached
-                config.imageProperties.maximumSize = CGSize(width: 44, height: 44)
-                config.imageProperties.reservedLayoutSize = CGSize(width: 44, height: 44)
-                config.imageProperties.cornerRadius = 22
+			if let cached = userIdToAvatarImage[other] {
+				// Use a circular 44x44 thumbnail to ensure consistent look
+				config.image = circularThumbnail(from: cached, size: CGSize(width: 44, height: 44))
             } else if let urlStr = userIdToAvatarURL[other], let url = URL(string: urlStr) {
 				URLSession.shared.dataTask(with: url) { data, _, _ in
 					if let d = data, let image = UIImage(data: d) {
 						DispatchQueue.main.async {
-							var cfg = config
-							cfg.image = image
-                            cfg.imageProperties.maximumSize = CGSize(width: 44, height: 44)
-                            cfg.imageProperties.reservedLayoutSize = CGSize(width: 44, height: 44)
-                            cfg.imageProperties.cornerRadius = 22
+							var cfg = UIListContentConfiguration.subtitleCell()
+							cfg.text = config.text
+							cfg.textProperties = config.textProperties
+							cfg.secondaryText = config.secondaryText
+							cfg.secondaryTextProperties = config.secondaryTextProperties
+							cfg.image = self.circularThumbnail(from: image, size: CGSize(width: 44, height: 44))
+							cfg.imageProperties.maximumSize = CGSize(width: 44, height: 44)
+							cfg.imageProperties.reservedLayoutSize = CGSize(width: 44, height: 44)
+							cfg.imageProperties.cornerRadius = 22
 							cell.contentConfiguration = cfg
                             self.userIdToAvatarImage[other] = image
 						}
@@ -338,9 +341,6 @@ final class ConversationsViewController: UIViewController, UITableViewDataSource
 				}.resume()
             } else {
                 config.image = UIImage(systemName: "person.crop.circle")
-                config.imageProperties.maximumSize = CGSize(width: 44, height: 44)
-                config.imageProperties.reservedLayoutSize = CGSize(width: 44, height: 44)
-                config.imageProperties.cornerRadius = 22
 			}
 		}
 		cell.contentConfiguration = config
