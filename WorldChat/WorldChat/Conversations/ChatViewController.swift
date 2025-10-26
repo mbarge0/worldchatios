@@ -237,12 +237,18 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
 			DispatchQueue.main.async {
 				self.smartRepliesStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
 				for s in suggestions {
-					let pill = UIButton(type: .system)
+                    let pill = UIButton(type: .system)
 					pill.setTitle("\(s.translated)", for: .normal)
 					pill.titleLabel?.font = .systemFont(ofSize: 15, weight: .semibold)
 					pill.setTitleColor(Theme.textPrimary, for: .normal)
 					pill.backgroundColor = Theme.brandSecondary.withAlphaComponent(0.4)
-					pill.contentEdgeInsets = UIEdgeInsets(top: 10, left: 12, bottom: 10, right: 12)
+                    if #available(iOS 15.0, *) {
+                        var cfg = pill.configuration ?? .plain()
+                        cfg.contentInsets = NSDirectionalEdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12)
+                        pill.configuration = cfg
+                    } else {
+                        pill.contentEdgeInsets = UIEdgeInsets(top: 10, left: 12, bottom: 10, right: 12)
+                    }
 					pill.layer.cornerRadius = 16
 					pill.isAccessibilityElement = true
 					pill.accessibilityLabel = "Smart reply suggestion: \(s.translated)"
@@ -468,13 +474,22 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
                     return others.allSatisfy { message.readBy.contains($0) }
                 }
             }()
+            // Determine speech text and language
+            let viewerLangForSpeech = participantLanguages[currentUid] ?? preferredLang
+            let speechText: String = isGroup
+                ? message.text
+                : (message.translations?[viewerLangForSpeech] ?? message.text)
+            let speechLang: String = isGroup ? senderLang : viewerLangForSpeech
+
             let vm = MessageViewModel(messageId: message.id,
                                       topText: topText.isEmpty ? (isOutgoing ? "⟲ translation pending" : message.text) : topText,
                                       bottomText: bottomText,
-                                      voiceLanguage: isGroup ? viewerLang : (isOutgoing ? receiverLang : senderLang),
+                                      voiceLanguage: speechLang,
                                       isOutgoing: isOutgoing,
                                       showDoubleCheck: showDouble,
-                                      profileImageURL: nil)
+                                      profileImageURL: nil,
+                                      isGroup: isGroup,
+                                      speechText: speechText)
             cell.apply(viewModel: vm)
             if isGroup && !isOutgoing {
                 if let url = userIdToAvatarURL[message.senderId] {
@@ -542,7 +557,9 @@ final class ChatViewController: UIViewController, UICollectionViewDataSource, UI
                                       voiceLanguage: senderLang,
                                       isOutgoing: true,
                                       showDoubleCheck: false,
-                                      profileImageURL: nil)
+                                      profileImageURL: nil,
+                                      isGroup: otherUserId.isEmpty,
+                                      speechText: "")
             cell.apply(viewModel: vm)
 		}
 		return cell
@@ -667,6 +684,8 @@ struct MessageViewModel {
     let isOutgoing: Bool
     let showDoubleCheck: Bool
     let profileImageURL: String?
+    let isGroup: Bool
+    let speechText: String
 }
 
 final class MessageCell: UICollectionViewCell {
@@ -912,12 +931,15 @@ final class MessageCell: UICollectionViewCell {
 	}
 
     @objc private func didTapPlay() {
-		guard let vm = currentViewModel else { return }
-		let toSpeak = vm.topText
+        guard let vm = currentViewModel else { return }
+        let toSpeak = vm.speechText
         guard !toSpeak.isEmpty else { return }
         let utterance = AVSpeechUtterance(string: toSpeak)
 		utterance.voice = AVSpeechSynthesisVoice(language: vm.voiceLanguage)
         utterance.rate = AVSpeechUtteranceDefaultSpeechRate
+        if vm.isGroup {
+            print("🟦 [SpeechService] Using original text for group chat playback (lang=\(vm.voiceLanguage))")
+        }
         UIView.animate(withDuration: 0.12, animations: { self.playButton.alpha = 0.4 }) { _ in
             UIView.animate(withDuration: 0.2) { self.playButton.alpha = 0.9 }
         }
